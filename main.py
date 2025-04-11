@@ -1,6 +1,7 @@
 import os
-
+import random
 import discord
+import typing
 
 class MyClient(discord.Client):
     async def on_ready(self):
@@ -15,6 +16,29 @@ class MyClient(discord.Client):
         if message.content.startswith('!hello'):
             await message.reply('Hello!', mention_author=True)
 
+        if message.content.startswith('/throw'):
+            # Get the user's throw from the message
+            user_throw = message.content.split('/throw ')[1].lower()
+
+            # Check if the user's throw is valid
+            if user_throw not in ['rock', 'paper', 'scissors']:
+                await message.reply(f"Please throw rock, paper, or scissors.", mention_author=True)
+                return
+
+            # Generate the bot's throw
+            bot_throw = random.choice(['rock', 'paper', 'scissors'])
+
+            # Determine the winner
+            if user_throw == bot_throw:
+                result = "It's a tie!"
+            elif (user_throw == 'rock' and bot_throw == 'scissors') or \
+                 (user_throw == 'paper' and bot_throw == 'rock') or \
+                 (user_throw == 'scissors' and bot_throw == 'paper'):
+                result = "You win!"
+            else:
+                result = "You lose!"
+
+            await message.reply(f"I threw {bot_throw}. {result}", mention_author=True)
 
 intents = discord.Intents.default()
 intents.message_content = True

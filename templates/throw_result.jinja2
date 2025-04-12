@@ -1,0 +1,6 @@
+{% set user_emoji = '🪨' if user_throw == 'rock' else '📄' if user_throw == 'paper' else '✂️' %}
+{% set bot_emoji = '🪨' if bot_throw == 'rock' else '📄' if bot_throw == 'paper' else '✂️' %}
+{% set result_emoji = '🎉' if 'win' in result.lower() else '😢' if 'lose' in result.lower() else '🤝' %}
+{{ user_name }} threw {{ user_emoji }}.
+The bot threw {{ bot_emoji }}.
+**{{ result }}** {{ result_emoji }}

@@ -1,9 +1,7 @@
 import os
 from flask import Flask, redirect, url_for, session, render_template, request
-import sqlite3
 import hashlib
-
-stats = []
+from db_helper import get_db_connection
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "supersekrit")
@@ -11,10 +9,6 @@ app.config["SESSION_TYPE"] = "filesystem"
 client_id = os.environ.get("GOOGLE_CLIENT_ID")
 client_secret = os.environ.get("GOOGLE_CLIENT_SECRET")
 
-def get_db_connection():
-    conn = sqlite3.connect("stats.db")
-    conn.row_factory = sqlite3.Row
-    return conn
 
 def create_user(username, password):
     conn = get_db_connection()
@@ -67,11 +61,6 @@ def login():
     return render_template("login.html")
 
 
-@app.route("/logout")
-def logout():
-    session.clear()
-    return redirect(url_for("login"))
-
 
 @app.route("/stats")
 def stats(page=1):
@@ -94,6 +83,12 @@ def stats(page=1):
 
     return render_template("stats.html", stats=stats, page=page, total_pages=total_pages)
 
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
+
 @app.route("/")
 def home():
     if not session.get("logged_in"):
@@ -101,13 +96,30 @@ def home():
     else:
         return redirect(url_for("stats"))
 
+def setup_database():
+    conn = get_db_connection()
+    cursor = conn.cursor()
 
-def run_flask():
-    admin_password = os.environ.get("ADMIN_PASSWORD")
-    if admin_password:
-        if not check_password("lotslarp", admin_password):
-            if not create_user("lotslarp", admin_password):
-                print("Failed to create admin user, may already exist.")
-            else:
-                print("Created admin user successfully.")
-    app.run(debug=False, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            username TEXT PRIMARY KEY,
+            password_hash TEXT
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS stats_log (
+            command_name TEXT,
+            user_id INTEGER,
+            user_name TEXT,
+            display_name TEXT,
+            result TEXT,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+if __name__ == "__main__":
+    setup_database()
+    app.run(host='0.0.0.0', port=8080)

@@ -11,10 +11,13 @@
     <div class="container mx-auto p-4">
         <div class="flex justify-between items-center mb-6">
             <h1 class="text-4xl font-bold">Statistics</h1>
-            <a href="/" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Home</a>
+            <div>
+                <a href="/" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Home</a>
+                <a href="/logout" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">Logout</a>
+            </div>
         </div>
         <div class="mb-4">
-            <span class="text-lg font-semibold">Page: {{ page }}</span>
+            <span class="text-lg font-semibold">Page: {{ page }} / {{ total_pages }}</span>
         </div>
         <table class="table-auto w-full border-collapse border border-gray-700">
             <thead>

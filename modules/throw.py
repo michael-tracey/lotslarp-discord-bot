@@ -1,9 +1,11 @@
 import random
+from jinja2 import Environment, FileSystemLoader
 
 class Throw:
-    def __init__(self, template_env):
-        self.template_env = template_env
+    def __init__(self):
+        self.template_env = Environment(loader=FileSystemLoader("templates"))
 
+    
     async def run(self, message):
         user_name = message.author.name
         user_throw = message.content.split()[1].lower() if len(message.content.split()) > 1 else ""
@@ -24,7 +26,7 @@ class Throw:
             or (user_throw == "paper" and bot_throw == "rock")
             or (user_throw == "scissors" and bot_throw == "paper")
         ):
-            result = f"{user_name} wins!"
+            result = user_name + " wins!"
         else:
             result = "I win!"
 

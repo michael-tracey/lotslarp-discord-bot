@@ -1,18 +1,17 @@
 import os
 import logging
 import sqlite3
-from dotenv import load_dotenv, find_dotenv
 import discord
 import asyncio
 import importlib
-load_dotenv()
 
 
 async def process_command(client, message, command_map):
-    conn = sqlite3.connect("stats.db")
+    db_name = os.environ.get("DATABASE_NAME", "stats.db")
+    conn = sqlite3.connect(db_name)
     try:
         parts = message.content[1:].split()
-        command_name = parts[0].lower() if parts else ""
+        command_name = parts[0].lower() if parts else "" 
 
         logging.info(f"Processing command: {command_name}")
         if command_name in command_map:

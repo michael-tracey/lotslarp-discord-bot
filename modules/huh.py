@@ -17,16 +17,23 @@ class Huh:
         logging.info(f"Looking up content for title: {title}")
 
         try:
-            conn = sqlite3.connect("scraped_content.db")
+            conn = sqlite3.connect("vamp_wiki_content.db")
             with conn:
                 cursor = conn.cursor()
-                cursor.execute("SELECT title, description_markdown, url FROM pages WHERE LOWER(title) = LOWER(?)", (title,))
+                cursor.execute("SELECT title, breadcrumbs, markdown_content, url, is_power, power_level, power_cost FROM pages WHERE LOWER(title) = LOWER(?)", (title,))
                 result = cursor.fetchone()
 
                 if result:
-                    page_title, content, url = result
-                    header = f"# {page_title}\n[BNS SRD]({url})\n\n"
-                    content = content.replace("_Share Link_", "")
+                    page_title, breadcrumbs, content, url, is_power, power_level, power_cost = result
+                    header = f"# {page_title}\n**{breadcrumbs}**\n"                    
+                    if not url.startswith('files/'):
+                        share_link = f"[BNS SRD]({url})\n\n"
+                        header += share_link
+
+                    if is_power:
+                        power_info = f"**Power Level:** {power_level}"
+                        power_info += f" **Cost:** {power_cost}" if power_cost else ""
+                        header += power_info + "\n"
 
                     # Process "Powers" section
                     powers_header = "## POWERS"
@@ -40,24 +47,26 @@ class Huh:
                         if next_header_index == -1:
                             next_header_index = len(content)
 
-                        powers_query = """SELECT title FROM pages
-                                        WHERE category = 'Discipline Power'
-                                        AND parent_discipline = ?
+                        if not is_power:
+                            powers_query = """SELECT title, power_level, power_cost FROM pages
+                                            WHERE category = 'Discipline Power'
+                                            AND parent_discipline_title = ?
+                                            AND LOWER(title) != LOWER(?)
+                                            ORDER BY power_level
                         """
-                        # Extract powers from the database and format them
-                        cursor.execute(powers_query, (page_title,))
-                        powers = [row[0] for row in cursor.fetchall()]
+                            # Extract powers from the database and format them
+                            cursor.execute(powers_query, (page_title, page_title))
+                            powers = cursor.fetchall()
 
-                        powers_list = "\n".join([f"- {p}" for p in powers]) if powers else "None"
+                            if powers:
+                                powers_list = "\n".join([f"- {p[0]} (Level {p[1]}{', Cost ' + str(p[2]) if p[2] else ''})" for p in powers])
+                                content = f"{content_before_powers}{powers_header}\n{powers_list}"
+                            else:
+                                content = f"{content_before_powers}{powers_header}\nNone"
 
-                        # Reconstruct content with the new powers list
-                        content = f"{content_before_powers}{powers_header}\n{powers_list}"
-                    else:
-                        next_header_index = len(content)
+                            content += "\n\n_You may /huh any individual powers in the list above._"
 
-                    # Add note about individual powers (only if powers were processed)
-                    if powers_index != -1:
-                        content += "\n\n_You may /huh any individual powers in the list above._"
+                    content = content.replace("_Share Link_", "")
 
                     # Consolidate whitespace and ensure headers are at the start of lines
                     content = clean_and_format_content(content)

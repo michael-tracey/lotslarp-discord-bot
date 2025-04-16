@@ -12,17 +12,7 @@ The Discord bot has the following commands:
 ## Web UI
 
 The web UI displays a log of the commands that have been called, the user that called them, and the time they were called. It requires a login to use.
-
+   
 ## Running the Application
 
-This application uses supervisord to manage the Discord bot and web UI processes. To run the application:
-
-1. Build the Docker container:
-   
-
-## Getting Started
-
-Server should run automatically when starting a workspace. To run manually, run:
-```sh
-./devserver.sh
-```
+This application uses supervisord to manage the Discord bot and web UI processes. To run the application, start supervisord. First build the docker image using `docker build -t lotslarp .` then run it using `docker compose up -d`.

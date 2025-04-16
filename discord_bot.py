@@ -1,6 +1,8 @@
 import os
 import logging
 import sqlite3
+logging.basicConfig(level=logging.INFO)
+
 import discord
 import asyncio
 import importlib

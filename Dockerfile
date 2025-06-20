@@ -7,8 +7,9 @@ RUN pip install -r requirements.txt
 
 COPY . .
 
-RUN apt-get update && apt-get install -y supervisor
+# Removed supervisor installation and config copy
+# RUN apt-get update && apt-get install -y supervisor
+# COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
-
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+COPY ./huh.db /app/huh.db
+CMD ["python3", "/app/discord_bot.py"]

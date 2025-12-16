@@ -7,6 +7,7 @@ import asyncio
 import importlib
 from dotenv import load_dotenv
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
 import google.generativeai as genai
 from modules import pdf_generator
 
@@ -278,9 +279,18 @@ async def send_digest_pdf(client: discord.Client, summary_module, gemini_model):
         return
 
     try:
+        # Prepare the message content with the summary
+        summary_header = f"**Daily Summary Digest - {datetime.utcnow().strftime('%Y-%m-%d')}**"
+        # Truncate summary for the message body to avoid hitting character limits
+        truncated_summary = executive_summary
+        if len(truncated_summary) > 1500:
+            truncated_summary = truncated_summary[:1500] + "...\n(Full summary in attached PDF)"
+        
+        message_content = f"{summary_header}\n\n{truncated_summary}"
+
         with open(pdf_path, "rb") as f:
             pdf_file = discord.File(f, filename=os.path.basename(pdf_path))
-            await channel.send(f"Daily Summary Digest - {datetime.utcnow().strftime('%Y-%m-%d')}", file=pdf_file)
+            await channel.send(content=message_content, file=pdf_file)
         logger.info(f"Successfully sent PDF digest to channel {channel.name}.")
         # Mark messages as sent ONLY after successful sending
         summary_module.mark_messages_as_sent(message_ids_to_mark_sent)
@@ -413,9 +423,23 @@ def setup_bot():
         intents=intents
     )
     
+from apscheduler.triggers.cron import CronTrigger
+
+# ... (rest of imports)
+
+# ... (rest of code)
+
     # Schedule jobs
     if summary_module_instance:
-        scheduler.add_job(send_digest_pdf, 'cron', hour=8, args=[client, summary_module_instance, gemini_model])
+        cron_schedule = os.environ.get("LOTSLARP_DISCORD_BOT_DIGEST_CRON", "0 8 * * *") # Default to 8:00 AM UTC daily
+        try:
+            trigger = CronTrigger.from_crontab(cron_schedule, timezone="UTC")
+            scheduler.add_job(send_digest_pdf, trigger=trigger, args=[client, summary_module_instance, gemini_model])
+            logger.info(f"Scheduled daily digest with cron schedule: '{cron_schedule}' UTC")
+        except ValueError as e:
+            logger.error(f"Invalid cron string '{cron_schedule}'. Defaulting to every day at 8am. Error: {e}")
+            scheduler.add_job(send_digest_pdf, 'cron', hour=8, args=[client, summary_module_instance, gemini_model])
+
         scheduler.add_job(summary_module_instance.delete_old_messages, 'cron', hour=0)
 
     return client

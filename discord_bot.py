@@ -320,7 +320,7 @@ def setup_bot():
     intents.guilds = True
 
     command_classes = {}
-    module_names_to_load = ["hello", "throw", "huh", "summary", "summary_digest", "pdf_generator", "larpbot_status"]
+    module_names_to_load = ["hello", "throw", "huh", "summary", "digest", "pdf_generator", "larpbot_status"]
     logger.info(f"Attempting to load command modules: {module_names_to_load}")
     for module_name_str in module_names_to_load:
         full_module_path = f"modules.{module_name_str}"
@@ -329,12 +329,8 @@ def setup_bot():
             module = importlib.import_module(full_module_path)
             logger.info(f"Successfully imported module object for {full_module_path}: {module}")
             
-            # Special handling for class names that don't fit the pattern
-            if module_name_str == "summary_digest":
-                expected_class_name = "Summary_digest"
-            else:
-                # Capitalize snake_case to CamelCase for class name
-                expected_class_name = ''.join(word.capitalize() for word in module_name_str.split('_'))
+            # Capitalize snake_case to CamelCase for class name
+            expected_class_name = ''.join(word.capitalize() for word in module_name_str.split('_'))
 
             logger.info(f"For module {module_name_str}, expecting class: {expected_class_name} (or 'Command')")
 
@@ -393,7 +389,7 @@ def setup_bot():
             elif name == "summary":
                 summary_module_instance = Cls(db_path=app_db_path)
                 continue # This is not a command, so don't add to map
-            elif name == "summary_digest":
+            elif name == "digest":
                 instance = Cls(summary_module=summary_module_instance, gemini_model=gemini_model, pdf_gen=pdf_generator)
             elif name == "larpbot_status":
                 status_command_instance = Cls(db_path=app_db_path, gemini_model=gemini_model)

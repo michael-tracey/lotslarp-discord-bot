@@ -3,17 +3,17 @@ import os
 from datetime import datetime, timedelta
 from modules import pdf_generator
 
-class Summary_digest:
+class Digest:
     def __init__(self, summary_module, gemini_model, pdf_gen):
         self.summary_module = summary_module
         self.gemini_model = gemini_model
         self.pdf_generator = pdf_gen
-        self.name = "summary-digest"
+        self.name = "digest"
 
     async def run(self, client: discord.Client, message: discord.Message):
         parts = message.content.split()
         if len(parts) != 2 or parts[1].lower() not in ["day", "week", "month"]:
-            await message.channel.send("Usage: /summary-digest <day|week|month>")
+            await message.channel.send("Usage: /digest <day|week|month>")
             return
 
         timeframe = parts[1].lower()

@@ -313,8 +313,13 @@ def setup_bot():
             module = importlib.import_module(full_module_path)
             logger.info(f"Successfully imported module object for {full_module_path}: {module}")
             
-            # Capitalize snake_case to CamelCase for class name
-            expected_class_name = ''.join(word.capitalize() for word in module_name_str.split('_'))
+            # Special handling for class names that don't fit the pattern
+            if module_name_str == "summary_digest":
+                expected_class_name = "Summary_digest"
+            else:
+                # Capitalize snake_case to CamelCase for class name
+                expected_class_name = ''.join(word.capitalize() for word in module_name_str.split('_'))
+
             logger.info(f"For module {module_name_str}, expecting class: {expected_class_name} (or 'Command')")
 
             found_class = None

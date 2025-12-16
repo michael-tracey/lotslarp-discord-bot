@@ -259,9 +259,13 @@ async def send_digest_pdf(client: discord.Client, summary_module, gemini_model):
             logger.error(f"Failed to generate summary from Gemini: {e}", exc_info=True)
             executive_summary = "Error generating summary."
 
+    # Get cadence name for titles
+    cadence_name = os.environ.get("LOTSLARP_DISCORD_BOT_DIGEST_CADENCE_NAME", "Daily")
+    pdf_title = f"{cadence_name} Summary Digest"
+
     # Generate PDF
     pdf_path = f"/tmp/digest_{datetime.utcnow().strftime('%Y-%m-%d')}.pdf"
-    pdf_success = pdf_generator.create_digest_pdf(pdf_path, executive_summary, messages_for_pdf)
+    pdf_success = pdf_generator.create_digest_pdf(pdf_path, executive_summary, messages_for_pdf, title=pdf_title)
 
     if not pdf_success:
         logger.error("Could not generate PDF, aborting digest send.")
@@ -280,7 +284,7 @@ async def send_digest_pdf(client: discord.Client, summary_module, gemini_model):
 
     try:
         # Prepare the message content with the summary
-        summary_header = f"**Daily Summary Digest - {datetime.utcnow().strftime('%Y-%m-%d')}**"
+        summary_header = f"**{pdf_title} - {datetime.utcnow().strftime('%Y-%m-%d')}**"
         # Truncate summary for the message body to avoid hitting character limits
         truncated_summary = executive_summary
         if len(truncated_summary) > 1500:

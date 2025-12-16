@@ -64,8 +64,9 @@ class Summary_digest:
             executive_summary = "Gemini API not configured. Cannot generate summary."
 
         # Generate PDF
+        pdf_title = f"{timeframe.capitalize()} Summary Digest"
         pdf_path = f"/tmp/summary_{timeframe}_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}.pdf"
-        pdf_success = self.pdf_generator.create_digest_pdf(pdf_path, executive_summary, messages_for_pdf)
+        pdf_success = self.pdf_generator.create_digest_pdf(pdf_path, executive_summary, messages_for_pdf, title=pdf_title)
 
         if not pdf_success:
             await message.channel.send("An error occurred while generating the PDF report.")
@@ -75,7 +76,7 @@ class Summary_digest:
         try:
             with open(pdf_path, "rb") as f:
                 pdf_file = discord.File(f, filename=os.path.basename(pdf_path))
-                await message.channel.send(f"Summary Digest for the last {timeframe}:", file=pdf_file)
+                await message.channel.send(f"**{pdf_title}**", file=pdf_file)
         except Exception as e:
             await message.channel.send(f"An error occurred while sending the PDF report: {e}")
         finally:

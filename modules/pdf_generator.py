@@ -5,8 +5,9 @@ import logging
 logger = logging.getLogger(__name__)
 
 class PDF(FPDF):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, title='Discord Summary Digest', **kwargs):
         super().__init__(*args, **kwargs)
+        self.title = title
         self.background_color = (40, 40, 40)
         self.text_color = (220, 220, 220)
         self.link_color = (100, 150, 255)
@@ -21,7 +22,7 @@ class PDF(FPDF):
     def header(self):
         self.set_text_color(self.header_color[0], self.header_color[1], self.header_color[2])
         self.set_font('Arial', 'B', 12)
-        self.cell(0, 10, 'Discord Summary Digest', 0, 1, 'C')
+        self.cell(0, 10, self.title, 0, 1, 'C')
         self.set_text_color(self.text_color[0], self.text_color[1], self.text_color[2])
         self.set_font('Arial', '', 8)
         self.cell(0, 10, f"Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')}", 0, 1, 'C')
@@ -78,7 +79,7 @@ class PDF(FPDF):
             self.multi_cell(0, 5, " " * 5 + safe_content) # Indent content
             self.ln(4)
 
-def create_digest_pdf(file_path, executive_summary, messages):
+def create_digest_pdf(file_path, executive_summary, messages, title="Discord Summary Digest"):
     """
     Generates a PDF digest.
 
@@ -86,9 +87,10 @@ def create_digest_pdf(file_path, executive_summary, messages):
         file_path (str): The full path to save the PDF file.
         executive_summary (str): The AI-generated summary text.
         messages (list): A list of message dictionaries.
+        title (str): The title for the PDF document.
     """
     try:
-        pdf = PDF()
+        pdf = PDF(title=title)
         
         # Add summary
         pdf.add_summary_section(executive_summary)

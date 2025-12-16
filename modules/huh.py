@@ -25,7 +25,7 @@ class Huh:
     # ... rest of the Huh class (async def run, _format_page_content, etc.)
 
 
-    async def run(self, message: discord.Message):
+    async def run(self, client: discord.Client, message: discord.Message):
         logging.info(f"Processing message in huh: {message.content}")
         parts = message.content.split()
         if len(parts) < 2:

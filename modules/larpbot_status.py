@@ -36,7 +36,7 @@ class LarpbotStatus:
         except Exception as e:
             return f"❌ Connection failed: {e}"
 
-    async def run(self, message: discord.Message):
+    async def run(self, client: discord.Client, message: discord.Message):
         """Runs the status checks and reports back."""
         await message.channel.send("Running bot status checks...", suppress_embeds=True)
         

@@ -6,7 +6,7 @@ class Throw:
         self.template_env = Environment(loader=FileSystemLoader("templates"))
 
     
-    async def run(self, message):
+    async def run(self, client, message):
         user_name = message.author.name
         user_throw = message.content.split()[1].lower() if len(message.content.split()) > 1 else ""
 

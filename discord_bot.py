@@ -80,9 +80,9 @@ async def process_command(client: discord.Client, message: discord.Message, comm
             command_instance = command_map[command_name]
             
             if asyncio.iscoroutinefunction(command_instance.run):
-                result = await command_instance.run(message)
+                result = await command_instance.run(client, message)
             else:
-                result = command_instance.run(message)
+                result = command_instance.run(client, message)
 
             if result is None:
                 logger.info(f"Command '{command_name}' returned None. No channel message needed.")
@@ -248,7 +248,9 @@ async def send_digest_pdf(client: discord.Client, summary_module, gemini_model):
     executive_summary = ""
     if gemini_model:
         try:
-            prompt = "Please provide an executive summary of the following messages:\n\n" + "\n".join(plain_text_for_summary)
+            default_prompt = "Please provide an executive summary of the following messages:\n\n"
+            prompt_instructions = os.environ.get("LOTSLARP_DISCORD_BOT_GEMINI_PROMPT", default_prompt)
+            prompt = f"{prompt_instructions}\n\n" + "\n".join(plain_text_for_summary)
             response = await gemini_model.generate_content_async(prompt)
             executive_summary = response.text
             logger.info("Successfully generated executive summary from Gemini.")
@@ -378,7 +380,7 @@ def setup_bot():
                 summary_module_instance = Cls(db_path=app_db_path)
                 continue # This is not a command, so don't add to map
             elif name == "summary_digest":
-                instance = Cls(summary_module=summary_module_instance, gemini_model=gemini_model)
+                instance = Cls(summary_module=summary_module_instance, gemini_model=gemini_model, pdf_gen=pdf_generator)
             elif name == "larpbot_status":
                 status_command_instance = Cls(db_path=app_db_path, gemini_model=gemini_model)
                 instance = status_command_instance

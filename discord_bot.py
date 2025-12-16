@@ -533,12 +533,12 @@ if __name__ == "__main__":
         else:
             logger.info("Attempting to run Discord client...")
             try:
-                # Set discord.py logging to DEBUG
+                # Set discord.py logging to INFO
                 discord_logger = logging.getLogger('discord')
-                discord_logger.setLevel(logging.DEBUG)
+                discord_logger.setLevel(logging.INFO)
                 
                 logger.debug("Calling client.run(token)...")
-                client.run(token, log_level=logging.DEBUG) 
+                client.run(token) 
                 logger.debug("client.run(token) has exited.")
 
             except discord.errors.LoginFailure:

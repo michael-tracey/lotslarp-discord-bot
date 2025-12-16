@@ -18,3 +18,4 @@ README.md
 deploy.sh
 huh.db
 .env
+.env.aws

@@ -259,6 +259,37 @@ async def send_digest_pdf(client: discord.Client, summary_module, gemini_model):
             logger.info(f"Removed temporary PDF file: {pdf_path}")
 
 
+async def run_startup_checks(status_command):
+    """Runs health checks at startup and logs the results."""
+    logger.info("--- Running Startup Health Checks ---")
+    
+    # 1. List available models
+    logger.info("--- Listing available Gemini models ---")
+    try:
+        models_found = []
+        for m in genai.list_models():
+            if 'generateContent' in m.supported_generation_methods:
+                models_found.append(m.name)
+        if models_found:
+            for model_name in models_found:
+                logger.info(f"Model found: {model_name}")
+        else:
+            logger.warning("No models supporting 'generateContent' found.")
+    except Exception as e:
+        logger.error(f"Could not list models: {e}")
+    logger.info("------------------------------------")
+
+    # 2. Perform DB and AI tests
+    if status_command:
+        db_status = await status_command._test_db()
+        ai_status = await status_command._test_ai()
+        logger.info(f"Database Status: {db_status}")
+        logger.info(f"Gemini AI Status: {ai_status}")
+    else:
+        logger.error("Status command not initialized, cannot run startup checks.")
+    logger.info("--- Startup Health Checks Complete ---")
+
+
 def run_discord_bot_main_logic():
     logger.info("Starting Discord bot core logic setup...")
     app_db_path = get_app_db_path()
@@ -269,7 +300,7 @@ def run_discord_bot_main_logic():
     intents.guilds = True
 
     command_classes = {}
-    module_names_to_load = ["hello", "throw", "huh", "summary", "summary_digest", "pdf_generator"]
+    module_names_to_load = ["hello", "throw", "huh", "summary", "summary_digest", "pdf_generator", "larpbot_status"]
     logger.info(f"Attempting to load command modules: {module_names_to_load}")
     for module_name_str in module_names_to_load:
         full_module_path = f"modules.{module_name_str}"
@@ -278,7 +309,8 @@ def run_discord_bot_main_logic():
             module = importlib.import_module(full_module_path)
             logger.info(f"Successfully imported module object for {full_module_path}: {module}")
             
-            expected_class_name = module_name_str.capitalize()
+            # Capitalize snake_case to CamelCase for class name
+            expected_class_name = ''.join(word.capitalize() for word in module_name_str.split('_'))
             logger.info(f"For module {module_name_str}, expecting class: {expected_class_name} (or 'Command')")
 
             found_class = None
@@ -316,37 +348,31 @@ def run_discord_bot_main_logic():
         logger.info(f"Finished loading command classes. Found: {list(command_classes.keys())}")
 
     gemini_api_key = os.environ.get("LOTSLARP_DISCORD_BOT_GEMINI_API_KEY")
+    gemini_model_name = os.environ.get("LOTSLARP_DISCORD_BOT_GEMINI_MODEL", "gemini-pro") # Default to gemini-pro
     gemini_model = None
     if gemini_api_key:
         genai.configure(api_key=gemini_api_key)
-        
-        # --- Temporary: List available models ---
-        logger.info("--- Listing available Gemini models ---")
-        try:
-            for m in genai.list_models():
-                if 'generateContent' in m.supported_generation_methods:
-                    logger.info(f"Model found: {m.name}")
-        except Exception as e:
-            logger.error(f"Could not list models: {e}")
-        logger.info("------------------------------------")
-        # --- End Temporary ---
-
-        gemini_model = genai.GenerativeModel('gemini-pro')
-        logger.info("Gemini API key found and model initialized.")
+        gemini_model = genai.GenerativeModel(gemini_model_name)
+        logger.info(f"Gemini API key found and model '{gemini_model_name}' initialized.")
     else:
         logger.warning("LOTSLARP_DISCORD_BOT_GEMINI_API_KEY not found. Summary generation will be disabled.")
 
     command_map_instances = {}
     summary_module_instance = None
+    status_command_instance = None
     for name, Cls in command_classes.items():
         try:
             if name == "huh":
                 command_map_instances[name] = Cls(database_filename=get_app_db_path())
             elif name == "summary":
                 summary_module_instance = Cls(db_path=app_db_path)
+                command_map_instances[name] = summary_module_instance
             elif name == "summary_digest":
                 instance = Cls(summary_module=summary_module_instance, gemini_model=gemini_model)
                 command_map_instances[instance.name] = instance
+            elif name == "larpbot_status":
+                status_command_instance = Cls(db_path=app_db_path, gemini_model=gemini_model)
+                command_map_instances[status_command_instance.name] = status_command_instance
             else:
                 command_map_instances[name] = Cls() 
             logger.info(f"Successfully instantiated command: {name}")
@@ -358,52 +384,9 @@ def run_discord_bot_main_logic():
     if not command_map_instances:
         logger.error("CRITICAL: No commands were successfully instantiated. Bot will not have commands.")
         
-    token = os.environ.get("LOTSLARP_DISCORD_BOT_DISCORD_TOKEN")
-    if not token:
-        logger.error("LOTSLARP_DISCORD_BOT_DISCORD_TOKEN not found. Bot cannot start main logic.")
-        return
+    # Return instances needed for startup checks
+    return command_map_instances, summary_module_instance, status_command_instance
 
-    scheduler = AsyncIOScheduler()
-    client = MyClient(command_map=command_map_instances, summary_module=summary_module_instance, scheduler=scheduler, intents=intents)
-    scheduler.add_job(send_digest_pdf, 'cron', hour=8, args=[client, summary_module_instance, gemini_model])
-    scheduler.add_job(summary_module_instance.delete_old_messages, 'cron', hour=0)
-
-    logger.info("Attempting to run Discord client...")
-    try:
-        client.run(token) 
-    except discord.LoginFailure:
-        logger.error("Discord Login Failed: Improper token has been passed.")
-    except Exception as e:
-        logger.error(f"An error occurred while running the Discord client: {e}", exc_info=True)
-    logger.info("Discord client has stopped.")
-
-
-async def run_diagnostics():
-    """Runs diagnostics on the database and logs the number of entries."""
-    logger.info("Running database diagnostics...")
-    db_path = get_app_db_path()
-    try:
-        # File system diagnostics
-        file_stats = os.stat(db_path)
-        logger.info(f"Database file found at: {db_path}")
-        logger.info(f"Database file size: {file_stats.st_size} bytes")
-        logger.info(f"Database file permissions (st_mode): {oct(file_stats.st_mode)}")
-
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
-
-        # Query the 'entries' table
-        cursor.execute("SELECT COUNT(*) FROM pages")
-        count = cursor.fetchone()
-        logger.info(f"Database page entries: {count}")
-
-    except FileNotFoundError:
-         logger.error(f"Database file not found at: {db_path}")
-    except Exception as e:
-        logger.error(f"Database operational error during diagnostics: {e}")
-    finally:
-        if 'conn' in locals() and conn:
-             conn.close()
 
 if __name__ == "__main__":
     logger.info("Application entry point (__main__) reached.")
@@ -413,11 +396,34 @@ if __name__ == "__main__":
     logger.info("Health check server thread initiated.")
 
     try:
-        # Run diagnostics after starting the health server but before the bot logic
-        asyncio.run(run_diagnostics())
-        logger.info("Calling run_discord_bot_main_logic().")
-        run_discord_bot_main_logic()
-    except Exception as main_bot_exc:
-        logger.critical(f"run_discord_bot_main_logic() CRASHED: {main_bot_exc}", exc_info=True)
+        # Initialize commands and get instances
+        command_map, summary_module, status_command = run_discord_bot_main_logic()
+
+        if status_command:
+            # Run startup checks
+            asyncio.run(run_startup_checks(status_command))
+        
+        # Proceed with bot execution if token is present
+        token = os.environ.get("LOTSLARP_DISCORD_BOT_DISCORD_TOKEN")
+        if not token:
+            logger.error("LOTSLARP_DISCORD_BOT_DISCORD_TOKEN not found. Bot cannot start.")
+        else:
+            intents = discord.Intents.default()
+            intents.message_content = True 
+            intents.members = True 
+            intents.guilds = True
+            
+            scheduler = AsyncIOScheduler()
+            client = MyClient(command_map=command_map, summary_module=summary_module, scheduler=scheduler, intents=intents)
+            
+            if summary_module:
+                scheduler.add_job(send_digest_pdf, 'cron', hour=8, args=[client, summary_module, status_command.gemini_model if status_command else None])
+                scheduler.add_job(summary_module.delete_old_messages, 'cron', hour=0)
+
+            logger.info("Attempting to run Discord client...")
+            client.run(token) 
+
+    except Exception as main_exc:
+        logger.critical(f"An unhandled exception occurred in the main execution block: {main_exc}", exc_info=True)
     
     logger.info("Application main thread finished or bot logic exited.")

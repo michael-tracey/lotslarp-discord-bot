@@ -423,12 +423,6 @@ def setup_bot():
         intents=intents
     )
     
-from apscheduler.triggers.cron import CronTrigger
-
-# ... (rest of imports)
-
-# ... (rest of code)
-
     # Schedule jobs
     if summary_module_instance:
         cron_schedule = os.environ.get("LOTSLARP_DISCORD_BOT_DIGEST_CRON", "0 8 * * *") # Default to 8:00 AM UTC daily

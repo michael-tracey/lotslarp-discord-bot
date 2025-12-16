@@ -50,4 +50,5 @@ class LarpbotStatus:
         embed.add_field(name="Database Connection", value=db_status, inline=False)
         embed.add_field(name="Gemini AI Connection", value=ai_status, inline=False)
         
-        return await message.channel.send(embed=embed)
+        await message.channel.send(embed=embed)
+        return None

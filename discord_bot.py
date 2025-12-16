@@ -422,9 +422,6 @@ if __name__ == "__main__":
     logger.info("Health check server thread initiated.")
 
     try:
-        # Run diagnostics (this is synchronous, so it's fine here)
-        asyncio.run(run_diagnostics())
-        
         # Setup bot and get client
         client = setup_bot()
         

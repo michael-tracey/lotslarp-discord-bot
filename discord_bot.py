@@ -319,6 +319,18 @@ def run_discord_bot_main_logic():
     gemini_model = None
     if gemini_api_key:
         genai.configure(api_key=gemini_api_key)
+        
+        # --- Temporary: List available models ---
+        logger.info("--- Listing available Gemini models ---")
+        try:
+            for m in genai.list_models():
+                if 'generateContent' in m.supported_generation_methods:
+                    logger.info(f"Model found: {m.name}")
+        except Exception as e:
+            logger.error(f"Could not list models: {e}")
+        logger.info("------------------------------------")
+        # --- End Temporary ---
+
         gemini_model = genai.GenerativeModel('gemini-pro')
         logger.info("Gemini API key found and model initialized.")
     else:
@@ -333,7 +345,8 @@ def run_discord_bot_main_logic():
             elif name == "summary":
                 summary_module_instance = Cls(db_path=app_db_path)
             elif name == "summary_digest":
-                command_map_instances[name] = Cls(summary_module=summary_module_instance, gemini_model=gemini_model)
+                instance = Cls(summary_module=summary_module_instance, gemini_model=gemini_model)
+                command_map_instances[instance.name] = instance
             else:
                 command_map_instances[name] = Cls() 
             logger.info(f"Successfully instantiated command: {name}")

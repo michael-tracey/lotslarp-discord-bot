@@ -318,7 +318,7 @@ def run_discord_bot_main_logic():
         gemini_model = genai.GenerativeModel('gemini-pro')
         logger.info("Gemini API key found and model initialized.")
     else:
-        logger.warning("GEMINI_API_KEY not found. Summary generation will be disabled.")
+        logger.warning("LOTSLARP_DISCORD_BOT_GEMINI_API_KEY not found. Summary generation will be disabled.")
 
     command_map_instances = {}
     summary_module_instance = None
@@ -343,7 +343,7 @@ def run_discord_bot_main_logic():
         
     token = os.environ.get("LOTSLARP_DISCORD_BOT_DISCORD_TOKEN")
     if not token:
-        logger.error("DISCORD_TOKEN not found. Bot cannot start main logic.")
+        logger.error("LOTSLARP_DISCORD_BOT_DISCORD_TOKEN not found. Bot cannot start main logic.")
         return
 
     scheduler = AsyncIOScheduler()

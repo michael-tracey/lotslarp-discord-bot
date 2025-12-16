@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 import google.generativeai as genai
+from google.cloud import firestore  # Add Firestore import
 from modules import pdf_generator
 
 # Load environment variables from .env file
@@ -171,9 +172,9 @@ class MyClient(discord.Client):
 
     async def on_ready(self):
         logger.info(f"Logged in as {self.user} (ID: {self.user.id})")
-        logger.info(f"Bot is in {len(self.guilds)} guilds.")
+        logger.info(f"Bot is in {len(self.guilds)} guilds:")
         for guild in self.guilds:
-            logger.info(f"- {guild.name} (ID: {guild.id})")
+            logger.info(f"  - Guild: {guild.name} (ID: {guild.id})")
         
         # Run startup checks now that the event loop is active
         await self.run_startup_checks()
@@ -212,6 +213,7 @@ class MyClient(discord.Client):
         logger.info("--- Startup Health Checks Complete ---")
 
     async def on_message(self, message: discord.Message):
+        logger.debug(f"Received message: {message.content}")
         if message.author == self.user:
             return
 
@@ -224,6 +226,8 @@ class MyClient(discord.Client):
         
         if message.content.startswith("/"):
             await process_command(self, message, self.command_map)
+        else:
+            logger.debug(f"Ignoring message because it did not start with '/': {message.content}")
 
 
 async def send_digest_pdf(client: discord.Client, summary_module, gemini_model):
@@ -240,7 +244,15 @@ async def send_digest_pdf(client: discord.Client, summary_module, gemini_model):
     unique_authors = set()
     
     for row in messages_data:
-        channel_id, guild_id, author_name, message_content, message_url, msg_id = row
+        # Deconstruct the list returned by the summary module
+        # Expected format: [channel_id, guild_id, author_name, message_content, message_url, doc_id]
+        channel_id = row[0]
+        guild_id = row[1]
+        author_name = row[2]
+        message_content = row[3]
+        message_url = row[4]
+        msg_id = row[5] # This is now the Firestore document ID (string)
+        
         guild = client.get_guild(guild_id)
         channel = client.get_channel(channel_id)
         guild_name = guild.name if guild else "Unknown Server"
@@ -422,6 +434,15 @@ def setup_bot():
     else:
         logger.warning("LOTSLARP_DISCORD_BOT_GEMINI_API_KEY not found. Summary generation will be disabled.")
 
+    # Initialize Firestore client
+    try:
+        firestore_client = firestore.Client()
+        logger.info("Successfully initialized Firestore client.")
+    except Exception as e:
+        logger.critical(f"Failed to initialize Firestore client: {e}", exc_info=True)
+        firestore_client = None
+
+
     command_map_instances = {}
     summary_module_instance = None
     status_command_instance = None
@@ -431,7 +452,10 @@ def setup_bot():
             if name == "huh":
                 instance = Cls(database_filename=get_app_db_path())
             elif name == "summary":
-                summary_module_instance = Cls(db_path=app_db_path)
+                if firestore_client:
+                    summary_module_instance = Cls(db_client=firestore_client)
+                else:
+                    logger.error("Firestore client not available, cannot instantiate Summary module.")
                 continue # This is not a command, so don't add to map
             elif name == "digest":
                 instance = Cls(summary_module=summary_module_instance, gemini_model=gemini_model, pdf_gen=pdf_generator)
@@ -500,7 +524,19 @@ if __name__ == "__main__":
             logger.error("LOTSLARP_DISCORD_BOT_DISCORD_TOKEN not found. Bot cannot start.")
         else:
             logger.info("Attempting to run Discord client...")
-            client.run(token) 
+            try:
+                # Set discord.py logging to DEBUG
+                discord_logger = logging.getLogger('discord')
+                discord_logger.setLevel(logging.DEBUG)
+                
+                logger.debug("Calling client.run(token)...")
+                client.run(token, log_level=logging.DEBUG) 
+                logger.debug("client.run(token) has exited.")
+
+            except discord.errors.LoginFailure:
+                logger.error("Login to Discord failed. Please check your token.", exc_info=True)
+            except Exception as e:
+                logger.error(f"An error occurred while running the client: {e}", exc_info=True)
 
     except Exception as main_exc:
         logger.critical(f"An unhandled exception occurred in the main execution block: {main_exc}", exc_info=True)

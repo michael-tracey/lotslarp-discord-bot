@@ -18,7 +18,106 @@ SERVICE_NAME=${SERVICE_NAME:-"lotslarp-discord-bot"}
 # The name of the Artifact Registry repository
 ARTIFACT_REGISTRY_REPO=${ARTIFACT_REGISTRY_REPO:-"discord-bots"}
 
-# --- Script ---
+# Email address for alert notifications (optional)
+# If set, a Cloud Monitoring alert policy will be created.
+ALERT_EMAIL=${ALERT_EMAIL:-""}
+
+# --- Helper Functions ---
+
+# This function configures the health checks on the deployed Cloud Run service
+configure_run_service() {
+    echo "--- Configuring Health Checks for Cloud Run service ---"
+    gcloud run services update "$SERVICE_NAME" \
+      --project="$GCP_PROJECT_ID" \
+      --region="$GCP_REGION" \
+      --startup-probe=path=/health,period=15,timeout=10,failure-threshold=24 \
+      --liveness-probe=path=/health,period=30,timeout=10,failure-threshold=3
+    echo "--- Health Checks configured ---"
+}
+
+# This function sets up monitoring alerts for the service
+setup_monitoring() {
+    if [ -z "$ALERT_EMAIL" ]; then
+        echo "ALERT_EMAIL is not set. Skipping monitoring setup."
+        return
+    fi
+
+    echo "--- Setting up Cloud Monitoring ---"
+    echo "Alerts will be sent to: $ALERT_EMAIL"
+
+    # 1. Find or create the notification channel
+    CHANNEL_ID=$(gcloud beta monitoring channels list --project="$GCP_PROJECT_ID" --filter="displayName=\"Email Alert: $ALERT_EMAIL\"" --format="value(name)")
+
+    if [ -z "$CHANNEL_ID" ]; then
+        echo "Notification channel for $ALERT_EMAIL not found. Creating it..."
+        
+        CHANNEL_JSON=$(mktemp)
+        cat > "$CHANNEL_JSON" << EOL
+{
+  "type": "email",
+  "displayName": "Email Alert: $ALERT_EMAIL",
+  "labels": { "email_address": "$ALERT_EMAIL" }
+}
+EOL
+        CHANNEL_ID=$(gcloud beta monitoring channels create --project="$GCP_PROJECT_ID" --channel-content-from-file="$CHANNEL_JSON" --format="value(name)")
+        rm "$CHANNEL_JSON"
+
+        if [ -z "$CHANNEL_ID" ]; then
+            echo "Error: Failed to create notification channel."
+            exit 1
+        else
+            echo "Successfully created notification channel."
+            echo "IMPORTANT: A verification email has been sent to $ALERT_EMAIL. You must click the link in it to enable notifications."
+        fi
+    else
+        echo "Found existing notification channel."
+    fi
+
+    # 2. Find or create the alert policy
+    POLICY_DISPLAY_NAME="Cloud Run Restarts - $SERVICE_NAME"
+    POLICY_ID=$(gcloud alpha monitoring policies list --project="$GCP_PROJECT_ID" --filter="displayName=\"$POLICY_DISPLAY_NAME\"" --format="value(name)")
+
+    if [ -z "$POLICY_ID" ]; then
+        echo "Alert policy '$POLICY_DISPLAY_NAME' not found. Creating it..."
+
+        POLICY_JSON=$(mktemp)
+        cat > "$POLICY_JSON" << EOL
+{
+  "displayName": "$POLICY_DISPLAY_NAME",
+  "combiner": "OR",
+  "conditions": [ {
+      "displayName": "Cloud Run Revision has restarted",
+      "conditionThreshold": {
+        "filter": "metric.type=\\"run.googleapis.com/container/restart_count\\" AND resource.type=\\"cloud_run_revision\\" AND resource.labels.service_name=\\"$SERVICE_NAME\\"",
+        "comparison": "COMPARISON_GT",
+        "thresholdValue": 0,
+        "duration": "600s",
+        "trigger": { "count": 1 },
+        "aggregations": [ { "alignmentPeriod": "600s", "perSeriesAligner": "ALIGN_DELTA" } ]
+      }
+  } ],
+  "notificationChannels": [ "$CHANNEL_ID" ],
+  "documentation": {
+    "content": "The $SERVICE_NAME container has restarted. This may indicate a crash loop or a failing liveness probe. Check the service logs for errors.",
+    "mimeType": "text/markdown"
+  }
+}
+EOL
+        if gcloud alpha monitoring policies create --project="$GCP_PROJECT_ID" --policy-from-file="$POLICY_JSON"; then
+            echo "Successfully created alert policy."
+        else
+            echo "Error: Failed to create alert policy."
+        fi
+        rm "$POLICY_JSON"
+    else
+        echo "Found existing alert policy."
+    fi
+
+    echo "--- Monitoring setup complete ---"
+}
+
+
+# --- Main Script ---
 
 set -e
 
@@ -31,16 +130,21 @@ echo "--------------------"
 
 echo ""
 echo "This script will deploy the Discord bot to Google Cloud Run."
-echo "It will also create/update secrets in Google Secret Manager from your .env file."
-echo ""
-echo "Please make sure you have the following tools installed:"
-echo "- gcloud"
-echo "- docker"
-echo ""
-echo "And that you are authenticated with gcloud:"
-echo "gcloud auth login"
-echo "gcloud auth configure-docker"
-echo ""
+# ... (rest of introductory text)
+
+# Check for Firestore Database and create if it does not exist
+echo "Checking for Firestore database..."
+if gcloud firestore databases describe --project="$GCP_PROJECT_ID" --database="(default)" >/dev/null 2>&1; then
+    echo "Firestore database already exists."
+else
+    echo "Firestore database not found. Creating a new one in nam5..."
+    if gcloud firestore databases create --project="$GCP_PROJECT_ID" --location="nam5" --type="firestore-native" --delete-protection; then
+        echo "Successfully created Firestore database."
+    else
+        echo "Failed to create Firestore database."
+        exit 1
+    fi
+fi
 
 if [ ! -f .env ]; then
     echo ".env file not found. Please copy .env.example to .env and fill in your secrets."
@@ -49,42 +153,36 @@ fi
 
 read -p "Do you want to continue? (y/n) " -n 1 -r
 echo
-if [[ ! $REPLY =~ ^[Yy]$ ]]
-then
+if [[ ! $REPLY =~ ^[Yy]$ ]]; then
     exit 1
 fi
 
 # Create/update secrets
 echo "Creating/updating secrets in Google Secret Manager..."
 while IFS= read -r line || [[ -n "$line" ]]; do
-    if [[ "$line" =~ ^\s*# || -z "$line" ]]; then
-        continue
-    fi
+    if [[ "$line" =~ ^\s*# || -z "$line" ]]; then continue; fi
     key=$(echo "$line" | cut -d '=' -f 1)
     value=$(echo "$line" | cut -d '=' -f 2-)
-    # Remove surrounding quotes if present
     value=$(echo "$value" | sed 's/^"//;s/"$//')
     
-    # Check if secret exists
     if gcloud secrets describe "$key" --project="$GCP_PROJECT_ID" >/dev/null 2>&1; then
         echo "Updating secret: $key"
         printf "%s" "$value" | gcloud secrets versions add "$key" --project="$GCP_PROJECT_ID" --data-file=-
     else
         echo "Creating secret: $key"
-        if gcloud secrets create "$key" --replication-policy=automatic --project="$GCP_PROJECT_ID"; then
-            printf "%s" "$value" | gcloud secrets versions add "$key" --project="$GCP_PROJECT_ID" --data-file=-
-        else
-            echo "Failed to create secret: $key. It may already exist. Trying to update instead..."
-            printf "%s" "$value" | gcloud secrets versions add "$key" --project="$GCP_PROJECT_ID" --data-file=-
-        fi
+        gcloud secrets create "$key" --replication-policy=automatic --project="$GCP_PROJECT_ID"
+        printf "%s" "$value" | gcloud secrets versions add "$key" --project="$GCP_PROJECT_ID" --data-file=-
     fi
 done < .env
 
-
 echo "Submitting build to Google Cloud Build..."
-
 gcloud builds submit --region=$GCP_REGION --config=cloudbuild.yaml \
     --substitutions=_SERVICE_NAME=$SERVICE_NAME,_REGION=$GCP_REGION,_ARTIFACT_REGISTRY_REPO=$ARTIFACT_REGISTRY_REPO \
     .
+
+# --- Post-Deployment Steps ---
+# These are called now that the main deployment has finished.
+configure_run_service
+setup_monitoring
 
 echo "Deployment successful!"

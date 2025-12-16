@@ -7,10 +7,10 @@
 # You can either set them here or as environment variables.
 
 # Google Cloud Project ID
-GCP_PROJECT_ID=${GCP_PROJECT_ID:-"your-gcp-project-id"}
+GCP_PROJECT_ID=${GCP_PROJECT_ID:-"lotslarp"}
 
 # Google Cloud Region
-GCP_REGION=${GCP_REGION:-"your-gcp-region"}
+GCP_REGION=${GCP_REGION:-"us-east1"}
 
 # The name of the Cloud Run service
 SERVICE_NAME=${SERVICE_NAME:-"lotslarp-discord-bot"}
@@ -62,15 +62,21 @@ while IFS= read -r line || [[ -n "$line" ]]; do
     fi
     key=$(echo "$line" | cut -d '=' -f 1)
     value=$(echo "$line" | cut -d '=' -f 2-)
+    # Remove surrounding quotes if present
+    value=$(echo "$value" | sed 's/^"//;s/"$//')
     
     # Check if secret exists
-    if gcloud secrets describe "$key" --project="$GCP_PROJECT_ID" &> /dev/null; then
+    if gcloud secrets describe "$key" --project="$GCP_PROJECT_ID" >/dev/null 2>&1; then
         echo "Updating secret: $key"
-        printf "%s" "$value" | gcloud secrets versions add "$key" --data-file=-
+        printf "%s" "$value" | gcloud secrets versions add "$key" --project="$GCP_PROJECT_ID" --data-file=-
     else
         echo "Creating secret: $key"
-        gcloud secrets create "$key" --replication-policy=\"automatic\" --project="$GCP_PROJECT_ID"
-        printf "%s" "$value" | gcloud secrets versions add "$key" --data-file=-
+        if gcloud secrets create "$key" --replication-policy=automatic --project="$GCP_PROJECT_ID"; then
+            printf "%s" "$value" | gcloud secrets versions add "$key" --project="$GCP_PROJECT_ID" --data-file=-
+        else
+            echo "Failed to create secret: $key. It may already exist. Trying to update instead..."
+            printf "%s" "$value" | gcloud secrets versions add "$key" --project="$GCP_PROJECT_ID" --data-file=-
+        fi
     fi
 done < .env
 

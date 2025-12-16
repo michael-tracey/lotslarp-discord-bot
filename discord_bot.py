@@ -5,6 +5,7 @@ import pathlib
 import discord
 import asyncio
 import importlib
+from datetime import datetime
 from dotenv import load_dotenv
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -159,7 +160,13 @@ class MyClient(discord.Client):
         self.scheduler = scheduler
         self.status_command = status_command
         self.summary_role_name = os.environ.get("LOTSLARP_DISCORD_BOT_SUMMARY_ROLE_NAME")
-        self.digest_channel_id = int(os.environ.get("LOTSLARP_DISCORD_BOT_DIGEST_CHANNEL_ID", 0))
+        try:
+            channel_id_str = os.environ.get("LOTSLARP_DISCORD_BOT_DIGEST_CHANNEL_ID", "0")
+            # Strip quotes and whitespace, then convert to int
+            self.digest_channel_id = int(channel_id_str.strip().strip('"').strip("'"))
+        except (ValueError, TypeError) as e:
+            logger.error(f"Invalid DIGEST_CHANNEL_ID value: '{os.environ.get('LOTSLARP_DISCORD_BOT_DIGEST_CHANNEL_ID')}'. Using 0 as default. Error: {e}")
+            self.digest_channel_id = 0
         logger.info("MyClient initialized.")
 
     async def on_ready(self):
@@ -229,6 +236,9 @@ async def send_digest_pdf(client: discord.Client, summary_module, gemini_model):
     messages_for_pdf = []
     plain_text_for_summary = []
     message_ids_to_mark_sent = []
+    total_message_length = 0
+    unique_authors = set()
+    
     for row in messages_data:
         channel_id, guild_id, author_name, message_content, message_url, msg_id = row
         guild = client.get_guild(guild_id)
@@ -245,6 +255,20 @@ async def send_digest_pdf(client: discord.Client, summary_module, gemini_model):
         })
         plain_text_for_summary.append(f"Server: {guild_name}, Channel: {channel_name}, Author: {author_name}\n{message_content}\n")
         message_ids_to_mark_sent.append(msg_id)
+        
+        # Calculate statistics
+        total_message_length += len(message_content)
+        unique_authors.add(author_name)
+    
+    # Prepare message statistics
+    message_count = len(messages_data)
+    avg_message_length = total_message_length // message_count if message_count > 0 else 0
+    message_stats = [
+        f"Total Messages: {message_count}",
+        f"Unique Authors: {len(unique_authors)}",
+        f"Average Message Length: {avg_message_length} characters",
+        f"Total Content Length: {total_message_length} characters"
+    ]
 
     executive_summary = ""
     if gemini_model:
@@ -259,13 +283,29 @@ async def send_digest_pdf(client: discord.Client, summary_module, gemini_model):
             logger.error(f"Failed to generate summary from Gemini: {e}", exc_info=True)
             executive_summary = "Error generating summary."
 
-    # Get cadence name for titles
+    # Get cadence name for titles and create date range
     cadence_name = os.environ.get("LOTSLARP_DISCORD_BOT_DIGEST_CADENCE_NAME", "Daily")
     pdf_title = f"{cadence_name} Summary Digest"
+    
+    # Create appropriate date range based on cadence
+    current_date = datetime.utcnow()
+    if cadence_name.lower() == "daily":
+        date_range = f"Day of {current_date.strftime('%B %d, %Y')}"
+    elif cadence_name.lower() == "weekly":
+        date_range = f"Week ending {current_date.strftime('%B %d, %Y')}"
+    else:
+        date_range = f"Period ending {current_date.strftime('%B %d, %Y')}"
 
     # Generate PDF
-    pdf_path = f"/tmp/digest_{datetime.utcnow().strftime('%Y-%m-%d')}.pdf"
-    pdf_success = pdf_generator.create_digest_pdf(pdf_path, executive_summary, messages_for_pdf, title=pdf_title)
+    pdf_path = f"/tmp/digest_{current_date.strftime('%Y-%m-%d')}.pdf"
+    pdf_success = pdf_generator.create_digest_pdf(
+        pdf_path, 
+        executive_summary, 
+        messages_for_pdf, 
+        title=pdf_title,
+        date_range=date_range,
+        message_stats=message_stats
+    )
 
     if not pdf_success:
         logger.error("Could not generate PDF, aborting digest send.")
@@ -283,18 +323,22 @@ async def send_digest_pdf(client: discord.Client, summary_module, gemini_model):
         return
 
     try:
-        # Prepare the message content with the summary
-        summary_header = f"**{pdf_title} - {datetime.utcnow().strftime('%Y-%m-%d')}**"
-        # Truncate summary for the message body to avoid hitting character limits
-        truncated_summary = executive_summary
-        if len(truncated_summary) > 1500:
-            truncated_summary = truncated_summary[:1500] + "...\n(Full summary in attached PDF)"
+        # Prepare Discord message with summary and statistics
+        discord_message = f"**{pdf_title} - {date_range}**\n\n"
+        discord_message += "**Message Statistics:**\n"
+        for stat in message_stats:
+            discord_message += f"• {stat}\n"
+        discord_message += "\n**Storyteller Summary:**\n"
         
-        message_content = f"{summary_header}\n\n{truncated_summary}"
+        # Truncate summary for Discord if too long
+        if len(executive_summary) > 1200:
+            discord_message += executive_summary[:1200] + "...\n\n*(Full summary available in attached PDF)*"
+        else:
+            discord_message += executive_summary
 
         with open(pdf_path, "rb") as f:
             pdf_file = discord.File(f, filename=os.path.basename(pdf_path))
-            await channel.send(content=message_content, file=pdf_file)
+            await channel.send(content=discord_message, file=pdf_file)
         logger.info(f"Successfully sent PDF digest to channel {channel.name}.")
         # Mark messages as sent ONLY after successful sending
         summary_module.mark_messages_as_sent(message_ids_to_mark_sent)

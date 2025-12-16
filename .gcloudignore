@@ -16,6 +16,5 @@ __pycache__/
 .vscode/
 README.md
 deploy.sh
-huh.db
 .env
 .env.aws

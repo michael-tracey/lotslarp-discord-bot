@@ -20,10 +20,13 @@ class Digest:
         end_date = datetime.utcnow()
         if timeframe == "day":
             start_date = end_date - timedelta(days=1)
+            date_range = f"Day of {start_date.strftime('%B %d, %Y')}"
         elif timeframe == "week":
             start_date = end_date - timedelta(weeks=1)
+            date_range = f"Week of {start_date.strftime('%B %d')} - {end_date.strftime('%B %d, %Y')}"
         elif timeframe == "month":
             start_date = end_date - timedelta(days=30)
+            date_range = f"Month of {start_date.strftime('%B %Y')}"
         
         await message.channel.send(f"Generating summary digest for the last {timeframe}...", suppress_embeds=True)
 
@@ -34,6 +37,9 @@ class Digest:
 
         messages_for_pdf = []
         plain_text_for_summary = []
+        total_message_length = 0
+        unique_authors = set()
+        
         for row in messages_data:
             channel_id, guild_id, author_name, message_content, message_url, msg_id = row
             guild = client.get_guild(guild_id)
@@ -49,6 +55,20 @@ class Digest:
                 "message_url": message_url,
             })
             plain_text_for_summary.append(f"Server: {guild_name}, Channel: {channel_name}, Author: {author_name}\n{message_content}\n")
+            
+            # Calculate statistics
+            total_message_length += len(message_content)
+            unique_authors.add(author_name)
+        
+        # Prepare message statistics
+        message_count = len(messages_data)
+        avg_message_length = total_message_length // message_count if message_count > 0 else 0
+        message_stats = [
+            f"Total Messages: {message_count}",
+            f"Unique Authors: {len(unique_authors)}",
+            f"Average Message Length: {avg_message_length} characters",
+            f"Total Content Length: {total_message_length} characters"
+        ]
 
         executive_summary = ""
         if self.gemini_model:
@@ -66,17 +86,37 @@ class Digest:
         # Generate PDF
         pdf_title = f"{timeframe.capitalize()} Summary Digest"
         pdf_path = f"/tmp/summary_{timeframe}_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}.pdf"
-        pdf_success = self.pdf_generator.create_digest_pdf(pdf_path, executive_summary, messages_for_pdf, title=pdf_title)
+        pdf_success = self.pdf_generator.create_digest_pdf(
+            pdf_path, 
+            executive_summary, 
+            messages_for_pdf, 
+            title=pdf_title,
+            date_range=date_range,
+            message_stats=message_stats
+        )
 
         if not pdf_success:
             await message.channel.send("An error occurred while generating the PDF report.")
             return
 
-        # Send PDF to channel
+        # Prepare Discord message with summary
+        discord_message = f"**{pdf_title} - {date_range}**\n\n"
+        discord_message += "**Message Statistics:**\n"
+        for stat in message_stats:
+            discord_message += f"• {stat}\n"
+        discord_message += "\n**Storyteller Summary:**\n"
+        
+        # Truncate summary for Discord if too long
+        if len(executive_summary) > 1200:
+            discord_message += executive_summary[:1200] + "...\n\n*(Full summary available in attached PDF)*"
+        else:
+            discord_message += executive_summary
+
+        # Send PDF to channel with summary
         try:
             with open(pdf_path, "rb") as f:
                 pdf_file = discord.File(f, filename=os.path.basename(pdf_path))
-                await message.channel.send(f"**{pdf_title}**", file=pdf_file)
+                await message.channel.send(discord_message, file=pdf_file)
         except Exception as e:
             await message.channel.send(f"An error occurred while sending the PDF report: {e}")
         finally:

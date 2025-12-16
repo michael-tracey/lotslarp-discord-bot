@@ -213,9 +213,14 @@ class MyClient(discord.Client):
         logger.info("--- Startup Health Checks Complete ---")
 
     async def on_message(self, message: discord.Message):
-        logger.debug(f"Received message: {message.content}")
         if message.author == self.user:
             return
+        
+        # Log message details without printing the entire content
+        if message.guild:
+            logger.debug(f"Received message from Guild: {message.guild.name}, Channel: {message.channel.name}, Author: {message.author.name}")
+        else:
+            logger.debug(f"Received DM message from Author: {message.author.name}")
 
         # Cache message if it contains a mention of the summary role
         if self.summary_role_name and message.role_mentions:
@@ -227,7 +232,10 @@ class MyClient(discord.Client):
         if message.content.startswith("/"):
             await process_command(self, message, self.command_map)
         else:
-            logger.debug(f"Ignoring message because it did not start with '/': {message.content}")
+            if message.guild:
+                logger.debug(f"Ignoring non-command message from Guild: {message.guild.name}, Channel: {message.channel.name}, Author: {message.author.name}")
+            else:
+                logger.debug(f"Ignoring non-command DM message from Author: {message.author.name}")
 
 
 async def send_digest_pdf(client: discord.Client, summary_module, gemini_model):

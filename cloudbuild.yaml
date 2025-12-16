@@ -1,0 +1,42 @@
+# This file is used by Google Cloud Build to build and deploy the Discord bot.
+
+steps:
+  # 1. Build the Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', '$_REGION-docker.pkg.dev/$PROJECT_ID/$_ARTIFACT_REGISTRY_REPO/$_SERVICE_NAME:$COMMIT_SHA', '.']
+
+  # 2. Push the Docker image to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', '$_REGION-docker.pkg.dev/$PROJECT_ID/$_ARTIFACT_REGISTRY_REPO/$_SERVICE_NAME:$COMMIT_SHA']
+
+  # 3. Deploy the Docker image to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - '$_SERVICE_NAME'
+      - '--image'
+      - '$_REGION-docker.pkg.dev/$PROJECT_ID/$_ARTIFACT_REGISTRY_REPO/$_SERVICE_NAME:$COMMIT_SHA'
+      - '--region'
+      - '$_REGION'
+      - '--platform'
+      - 'managed'
+      - '--port'
+      - '8080'
+      - '--no-allow-unauthenticated'
+      # --- Environment Variables ---
+      # The deploy.sh script will create/update the secrets in Google Secret Manager.
+      # This step attaches the secrets to the Cloud Run service.
+      - '--update-secrets=LOTSLARP_DISCORD_BOT_DISCORD_TOKEN=LOTSLARP_DISCORD_BOT_DISCORD_TOKEN:latest,LOTSLARP_DISCORD_BOT_GEMINI_API_KEY=LOTSLARP_DISCORD_BOT_GEMINI_API_KEY:latest,LOTSLARP_DISCORD_BOT_SMTP_SERVER=LOTSLARP_DISCORD_BOT_SMTP_SERVER:latest,LOTSLARP_DISCORD_BOT_SMTP_PORT=LOTSLARP_DISCORD_BOT_SMTP_PORT:latest,LOTSLARP_DISCORD_BOT_SMTP_USER=LOTSLARP_DISCORD_BOT_SMTP_USER:latest,LOTSLARP_DISCORD_BOT_SMTP_PASSWORD=LOTSLARP_DISCORD_BOT_SMTP_PASSWORD:latest,LOTSLARP_DISCORD_BOT_DIGEST_RECIPIENT=LOTSLARP_DISCORD_BOT_DIGEST_RECIPIENT:latest,LOTSLARP_DISCORD_BOT_APP_DB=LOTSLARP_DISCORD_BOT_APP_DB:latest,LOTSLARP_DISCORD_BOT_SUMMARY_ROLE_ID=LOTSLARP_DISCORD_BOT_SUMMARY_ROLE_ID:latest'
+
+images:
+  - '$_REGION-docker.pkg.dev/$PROJECT_ID/$_ARTIFACT_REGISTRY_REPO/$_SERVICE_NAME:$COMMIT_SHA'
+
+substitutions:
+  _SERVICE_NAME: 'lotslarp-discord-bot'
+  _REGION: 'us-central1'
+  _ARTIFACT_REGISTRY_REPO: 'discord-bots'
+
+options:
+  logging: CLOUD_LOGGING_ONLY

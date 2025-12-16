@@ -1,0 +1,20 @@
+# This file specifies files to be ignored by gcloud builds submit.
+
+# Git
+.git/
+.gitignore
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Other
+.idea/
+.vscode/
+README.md
+deploy.sh
+huh.db
+.env

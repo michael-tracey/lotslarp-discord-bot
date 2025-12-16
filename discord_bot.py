@@ -5,6 +5,9 @@ import pathlib
 import discord
 import asyncio
 import importlib
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+import google.generativeai as genai
+from modules import pdf_generator
 
 # --- HTTP Health Check Server Imports ---
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -137,17 +140,20 @@ async def process_command(client: discord.Client, message: discord.Message, comm
 
 
 def get_app_db_path():
-    db_name = os.environ.get("APP_DB", "huh.db")
+    db_name = os.environ.get("LOTSLARP_DISCORD_BOT_APP_DB", "huh.db")
     db_path = os.path.abspath(db_name)
     logger.info(f"Constructed absolute path for content DB: '{db_path}'")
     return os.path.abspath(db_path)
 
 
 class MyClient(discord.Client):
-    # ... (your MyClient class - no changes needed here for health checks) ...
-    def __init__(self, command_map, *args, **kwargs):
+    def __init__(self, command_map, summary_module, scheduler, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.command_map = command_map
+        self.summary_module = summary_module
+        self.scheduler = scheduler
+        self.summary_role_name = os.environ.get("LOTSLARP_DISCORD_BOT_SUMMARY_ROLE_NAME")
+        self.digest_channel_id = int(os.environ.get("LOTSLARP_DISCORD_BOT_DIGEST_CHANNEL_ID", 0))
         logger.info("MyClient initialized.")
 
     async def on_ready(self):
@@ -155,13 +161,98 @@ class MyClient(discord.Client):
         logger.info(f"Bot is in {len(self.guilds)} guilds.")
         for guild in self.guilds:
             logger.info(f"- {guild.name} (ID: {guild.id})")
+        self.scheduler.start()
+        logger.info("Scheduler started.")
 
     async def on_message(self, message: discord.Message):
         if message.author == self.user:
             return
+
+        # Cache message if it contains a mention of the summary role
+        if self.summary_role_name and message.role_mentions:
+            mentioned_role_names = [role.name for role in message.role_mentions]
+            if self.summary_role_name in mentioned_role_names:
+                logger.info(f"Found summary mention for role '{self.summary_role_name}' in message {message.id}")
+                self.summary_module.cache_message(message)
         
         if message.content.startswith("/"):
             await process_command(self, message, self.command_map)
+
+
+async def send_digest_pdf(client: discord.Client, summary_module, gemini_model):
+    logger.info("Starting daily digest PDF process...")
+    messages_data = summary_module.get_messages_for_digest()
+    if not messages_data:
+        logger.info("No messages to summarize. Skipping PDF generation.")
+        return
+
+    messages_for_pdf = []
+    plain_text_for_summary = []
+    message_ids_to_mark_sent = []
+    for row in messages_data:
+        channel_id, guild_id, author_name, message_content, message_url, msg_id = row
+        guild = client.get_guild(guild_id)
+        channel = client.get_channel(channel_id)
+        guild_name = guild.name if guild else "Unknown Server"
+        channel_name = channel.name if channel else "Unknown Channel"
+        
+        messages_for_pdf.append({
+            "guild_name": guild_name,
+            "channel_name": channel_name,
+            "author_name": author_name,
+            "message_content": message_content,
+            "message_url": message_url,
+        })
+        plain_text_for_summary.append(f"Server: {guild_name}, Channel: {channel_name}, Author: {author_name}\n{message_content}\n")
+        message_ids_to_mark_sent.append(msg_id)
+
+    executive_summary = ""
+    if gemini_model:
+        try:
+            prompt = "Please provide an executive summary of the following messages:\n\n" + "\n".join(plain_text_for_summary)
+            response = await gemini_model.generate_content_async(prompt)
+            executive_summary = response.text
+            logger.info("Successfully generated executive summary from Gemini.")
+        except Exception as e:
+            logger.error(f"Failed to generate summary from Gemini: {e}", exc_info=True)
+            executive_summary = "Error generating summary."
+
+    # Generate PDF
+    pdf_path = f"/tmp/digest_{datetime.utcnow().strftime('%Y-%m-%d')}.pdf"
+    pdf_success = pdf_generator.create_digest_pdf(pdf_path, executive_summary, messages_for_pdf)
+
+    if not pdf_success:
+        logger.error("Could not generate PDF, aborting digest send.")
+        return
+
+    # Send PDF to channel
+    channel_id = client.digest_channel_id
+    if not channel_id:
+        logger.error("LOTSLARP_DISCORD_BOT_DIGEST_CHANNEL_ID not set. Cannot send PDF.")
+        return
+
+    channel = client.get_channel(channel_id)
+    if not channel:
+        logger.error(f"Cannot find channel with ID {channel_id}.")
+        return
+
+    try:
+        with open(pdf_path, "rb") as f:
+            pdf_file = discord.File(f, filename=os.path.basename(pdf_path))
+            await channel.send(f"Daily Summary Digest - {datetime.utcnow().strftime('%Y-%m-%d')}", file=pdf_file)
+        logger.info(f"Successfully sent PDF digest to channel {channel.name}.")
+        # Mark messages as sent ONLY after successful sending
+        summary_module.mark_messages_as_sent(message_ids_to_mark_sent)
+        logger.info(f"Marked {len(message_ids_to_mark_sent)} messages as sent.")
+    except discord.errors.Forbidden:
+        logger.error(f"Bot does not have permissions to send messages or files in channel {channel.name}.")
+    except Exception as e:
+        logger.error(f"Failed to send PDF digest: {e}", exc_info=True)
+    finally:
+        # Clean up the generated PDF file
+        if os.path.exists(pdf_path):
+            os.remove(pdf_path)
+            logger.info(f"Removed temporary PDF file: {pdf_path}")
 
 
 def run_discord_bot_main_logic():
@@ -174,8 +265,7 @@ def run_discord_bot_main_logic():
     intents.guilds = True
 
     command_classes = {}
-    module_names_to_load = ["hello", "throw", "huh"]
-    # ... (your existing command loading logic - ensure it's correct from previous fixes) ...
+    module_names_to_load = ["hello", "throw", "huh", "summary", "summary_digest", "pdf_generator"]
     logger.info(f"Attempting to load command modules: {module_names_to_load}")
     for module_name_str in module_names_to_load:
         full_module_path = f"modules.{module_name_str}"
@@ -218,15 +308,28 @@ def run_discord_bot_main_logic():
 
     if not command_classes:
         logger.error("CRITICAL: No command classes were loaded. Bot will not have commands.")
-        # Don't return here; allow health server to run
     else:
         logger.info(f"Finished loading command classes. Found: {list(command_classes.keys())}")
 
+    gemini_api_key = os.environ.get("LOTSLARP_DISCORD_BOT_GEMINI_API_KEY")
+    gemini_model = None
+    if gemini_api_key:
+        genai.configure(api_key=gemini_api_key)
+        gemini_model = genai.GenerativeModel('gemini-pro')
+        logger.info("Gemini API key found and model initialized.")
+    else:
+        logger.warning("GEMINI_API_KEY not found. Summary generation will be disabled.")
+
     command_map_instances = {}
+    summary_module_instance = None
     for name, Cls in command_classes.items():
         try:
             if name == "huh":
                 command_map_instances[name] = Cls(database_filename=get_app_db_path())
+            elif name == "summary":
+                summary_module_instance = Cls(db_path=app_db_path)
+            elif name == "summary_digest":
+                command_map_instances[name] = Cls(summary_module=summary_module_instance, gemini_model=gemini_model)
             else:
                 command_map_instances[name] = Cls() 
             logger.info(f"Successfully instantiated command: {name}")
@@ -237,17 +340,17 @@ def run_discord_bot_main_logic():
 
     if not command_map_instances:
         logger.error("CRITICAL: No commands were successfully instantiated. Bot will not have commands.")
-        # Don't return here
         
-    token = os.environ.get("DISCORD_TOKEN")
+    token = os.environ.get("LOTSLARP_DISCORD_BOT_DISCORD_TOKEN")
     if not token:
         logger.error("DISCORD_TOKEN not found. Bot cannot start main logic.")
-        # Don't return, health server can still indicate container is "up"
-        # but bot won't connect.
-        return # Actually, bot logic can't proceed without token.
+        return
 
-    client = MyClient(command_map=command_map_instances, intents=intents)
-    
+    scheduler = AsyncIOScheduler()
+    client = MyClient(command_map=command_map_instances, summary_module=summary_module_instance, scheduler=scheduler, intents=intents)
+    scheduler.add_job(send_digest_pdf, 'cron', hour=8, args=[client, summary_module_instance, gemini_model])
+    scheduler.add_job(summary_module_instance.delete_old_messages, 'cron', hour=0)
+
     logger.info("Attempting to run Discord client...")
     try:
         client.run(token) 

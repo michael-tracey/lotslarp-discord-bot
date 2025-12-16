@@ -5,9 +5,13 @@ import pathlib
 import discord
 import asyncio
 import importlib
+from dotenv import load_dotenv
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 import google.generativeai as genai
 from modules import pdf_generator
+
+# Load environment variables from .env file
+load_dotenv()
 
 # --- HTTP Health Check Server Imports ---
 from http.server import BaseHTTPRequestHandler, HTTPServer

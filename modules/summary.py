@@ -1,6 +1,7 @@
 import datetime
 import logging
 import discord
+import asyncio # Added this import
 from google.cloud.firestore_v1.base_client import BaseClient
 
 class Summary:
@@ -9,11 +10,14 @@ class Summary:
         self.collection_ref = self.db.collection('summary_messages')
         logging.info("Summary module initialized with Firestore client.")
 
-    def cache_message(self, message: discord.Message):
+    async def cache_message(self, message: discord.Message):
         """
         Caches a message as a new document in Firestore, enriching it with metadata
         and replacing mention IDs with readable names.
         """
+        await asyncio.to_thread(self._cache_message_sync, message)
+
+    def _cache_message_sync(self, message: discord.Message):
         doc_ref = self.collection_ref.document(str(message.id))
 
         # Start with original content
@@ -58,8 +62,11 @@ class Summary:
         doc_ref.set(doc_data)
         logging.info(f"Cached and enriched message {message.id} to Firestore.")
 
-    def get_messages_for_digest(self):
+    async def get_messages_for_digest(self):
         """Fetches all unsent messages, ordered by timestamp."""
+        return await asyncio.to_thread(self._get_messages_for_digest_sync)
+
+    def _get_messages_for_digest_sync(self):
         query = self.collection_ref.where('sent_date', '==', None).order_by('timestamp')
         docs = query.stream()
         
@@ -82,8 +89,11 @@ class Summary:
             ])
         return messages
 
-    def get_messages_since(self, start_date):
+    async def get_messages_since(self, start_date):
         """Fetches all messages since a given start date."""
+        return await asyncio.to_thread(self._get_messages_since_sync, start_date)
+
+    def _get_messages_since_sync(self, start_date):
         query = self.collection_ref.where('timestamp', '>=', start_date).order_by('timestamp')
         docs = query.stream()
         
@@ -100,11 +110,13 @@ class Summary:
             ])
         return messages
 
-    def mark_messages_as_sent(self, message_ids):
+    async def mark_messages_as_sent(self, message_ids):
         """Marks a list of messages as sent by setting their sent_date in a batch."""
         if not message_ids:
             return
-        
+        await asyncio.to_thread(self._mark_messages_as_sent_sync, message_ids)
+
+    def _mark_messages_as_sent_sync(self, message_ids):
         batch = self.db.batch()
         sent_time = datetime.datetime.utcnow()
         
@@ -138,15 +150,21 @@ class Summary:
 
         return deleted
 
-    def clear_all_messages(self):
+    async def clear_all_messages(self):
         """Deletes all documents from the summary_messages collection."""
+        await asyncio.to_thread(self._clear_all_messages_sync)
+
+    def _clear_all_messages_sync(self):
         logging.warning("Clearing all messages from the Firestore summary_messages collection.")
         query = self.collection_ref
         deleted_count = self._delete_collection_in_batches(query, 100)
         logging.info(f"Cleared {deleted_count} messages from Firestore.")
 
-    def delete_old_messages(self):
+    async def delete_old_messages(self):
         """Deletes messages older than six weeks."""
+        await asyncio.to_thread(self._delete_old_messages_sync)
+
+    def _delete_old_messages_sync(self):
         six_weeks_ago = datetime.datetime.utcnow() - datetime.timedelta(weeks=6)
         logging.info(f"Deleting messages older than {six_weeks_ago}...")
         

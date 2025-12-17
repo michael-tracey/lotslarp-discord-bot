@@ -316,9 +316,10 @@ async def send_digest_pdf(client: discord.Client, summary_module, gemini_model):
     else:
         date_range = f"Period ending {current_date.strftime('%B %d, %Y')}"
 
-    # Generate PDF
+    # Generate PDF in a separate thread to avoid blocking the event loop
     pdf_path = f"/tmp/digest_{current_date.strftime('%Y-%m-%d')}.pdf"
-    pdf_success = pdf_generator.create_digest_pdf(
+    pdf_success = await asyncio.to_thread(
+        pdf_generator.create_digest_pdf,
         pdf_path, 
         executive_summary, 
         messages_for_pdf, 

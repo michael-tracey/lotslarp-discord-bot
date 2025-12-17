@@ -5,6 +5,8 @@ import pathlib
 import discord
 import asyncio
 import importlib
+import tracemalloc
+import linecache
 from datetime import datetime
 from dotenv import load_dotenv
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -12,6 +14,38 @@ from apscheduler.triggers.cron import CronTrigger
 import google.generativeai as genai
 from google.cloud import firestore  # Add Firestore import
 from modules import pdf_generator
+
+# --- Memory Profiling ---
+last_snapshot = None
+
+def log_memory_usage():
+    global last_snapshot
+    
+    if not tracemalloc.is_tracing():
+        logger.warning("Tracemalloc is not running, can't log memory usage.")
+        return
+        
+    current_snapshot = tracemalloc.take_snapshot()
+    
+    if last_snapshot:
+        top_stats = current_snapshot.compare_to(last_snapshot, 'lineno')
+        
+        total_growth = sum(stat.size_diff for stat in top_stats)
+        if total_growth > 0:
+            logger.info(f"--- Memory Usage Growth Detected (Total: {total_growth / 1024:.2f} KiB) ---")
+            for i, stat in enumerate(top_stats[:10], 1):
+                frame = stat.traceback[0]
+                logger.info(f"#{i}: {frame.filename}:{frame.lineno}: {stat.size_diff / 1024:.2f} KiB growth")
+                logger.info(f"    Line: {linecache.getline(frame.filename, frame.lineno).strip()}")
+        else:
+            logger.info("No significant memory growth since last check.")
+
+    last_snapshot = current_snapshot
+
+def heartbeat():
+    logger.info("Bot is still alive.")
+
+# --- End Memory Profiling ---
 
 # Load environment variables from .env file
 load_dotenv()
@@ -33,29 +67,23 @@ class HealthCheckHandler(BaseHTTPRequestHandler):
             self.send_header('Content-type', 'text/plain')
             self.end_headers()
             self.wfile.write(b"BotContainerHealthy") # Simple health response
-            logger.debug("Health check GET request successful.")
+            logger.info("Health check GET request successful.")
         else:
             self.send_response(404)
             self.send_header('Content-type', 'text/plain')
             self.end_headers()
             self.wfile.write(b"NotFound")
-            logger.debug(f"Health check GET request to unknown path: {self.path}")
+            logger.warning(f"Health check GET request to unknown path: {self.path}")
 
     def log_message(self, format, *args):
         # Quieten the HTTP server's logging or integrate with your main logger
-        logger.debug("%s - %s" % (self.address_string(), format % args))
+        logger.debug("Health check server: %s" % (format % args))
 
 
 def run_health_server(bot_client_for_check: discord.Client = None): # Optional: pass bot client
     port = int(os.environ.get("PORT", 8080))
     server_address = ('0.0.0.0', port) # Listen on all interfaces
     
-    # If you want the health handler to check the bot's status:
-    # You might need to make the handler a class factory or pass the client
-    # For simplicity, HealthCheckHandler is kept basic here.
-    # Example: You could define HealthCheckHandler inside run_health_server
-    # and it could access bot_client_for_check if it's in scope or passed.
-
     httpd = HTTPServer(server_address, HealthCheckHandler)
     logger.info(f"Health check HTTP server starting on port {port}...")
     try:
@@ -227,7 +255,7 @@ class MyClient(discord.Client):
             mentioned_role_names = [role.name for role in message.role_mentions]
             if self.summary_role_name in mentioned_role_names:
                 logger.info(f"Found summary mention for role '{self.summary_role_name}' in message {message.id}")
-                self.summary_module.cache_message(message)
+                await self.summary_module.cache_message(message)
         
         if message.content.startswith("/"):
             await process_command(self, message, self.command_map)
@@ -240,7 +268,7 @@ class MyClient(discord.Client):
 
 async def send_digest_pdf(client: discord.Client, summary_module, gemini_model):
     logger.info("Starting daily digest PDF process...")
-    messages_data = summary_module.get_messages_for_digest()
+    messages_data = await summary_module.get_messages_for_digest()
     if not messages_data:
         logger.info("No messages to summarize. Skipping PDF generation.")
         return
@@ -362,7 +390,7 @@ async def send_digest_pdf(client: discord.Client, summary_module, gemini_model):
             await channel.send(content=discord_message, file=pdf_file)
         logger.info(f"Successfully sent PDF digest to channel {channel.name}.")
         # Mark messages as sent ONLY after successful sending
-        summary_module.mark_messages_as_sent(message_ids_to_mark_sent)
+        await summary_module.mark_messages_as_sent(message_ids_to_mark_sent)
         logger.info(f"Marked {len(message_ids_to_mark_sent)} messages as sent.")
     except discord.errors.Forbidden:
         logger.error(f"Bot does not have permissions to send messages or files in channel {channel.name}.")
@@ -513,11 +541,19 @@ def setup_bot():
 
         scheduler.add_job(summary_module_instance.delete_old_messages, 'cron', hour=0)
 
+    # Schedule memory profiling and heartbeat jobs
+    scheduler.add_job(log_memory_usage, 'interval', minutes=5)
+    scheduler.add_job(heartbeat, 'interval', minutes=1)
+
     return client
 
 
 if __name__ == "__main__":
     logger.info("Application entry point (__main__) reached.")
+    
+    # Start tracemalloc
+    tracemalloc.start()
+    logger.info("Tracemalloc started for memory profiling.")
     
     health_server_thread = threading.Thread(target=run_health_server, daemon=True)
     health_server_thread.start()

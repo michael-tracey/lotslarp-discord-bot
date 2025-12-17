@@ -30,7 +30,7 @@ class Digest:
         
         await message.channel.send(f"Generating summary digest for the last {timeframe}...", suppress_embeds=True)
 
-        messages_data = self.summary_module.get_messages_since(start_date)
+        messages_data = await self.summary_module.get_messages_since(start_date)
         if not messages_data:
             await message.channel.send(f"No messages found for the last {timeframe}.")
             return

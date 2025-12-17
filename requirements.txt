@@ -7,6 +7,7 @@ google-auth
 requests
 google-auth-oauthlib
 discord.py
+aiohttp
 python-dotenv
 apscheduler
 google-generativeai

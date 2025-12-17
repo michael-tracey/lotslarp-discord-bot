@@ -1,9 +1,10 @@
 import logging
 import sqlite3
+import asyncio
 from jinja2 import Environment, FileSystemLoader
 import discord
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.WARNING)
 
 # A simple list of common stop words.
 STOP_WORDS = set([
@@ -26,132 +27,84 @@ class Huh:
 
 
     async def run(self, client: discord.Client, message: discord.Message):
-        logging.info(f"Processing message in huh: {message.content}")
+
         parts = message.content.split()
         if len(parts) < 2:
             return "Please provide a title to search for."
         title_search = " ".join(parts[1:])
-        original_title_search_lower = title_search.lower()
-        logging.info(f"Looking up content for title: {title_search}")
+        
+        result, suggestions = await asyncio.to_thread(self._search_database, title_search)
+
+        if result:
+            return self._format_page_content(result)
+        elif suggestions:
+            unique_suggestions = list(set(suggestions))
+            unique_suggestions = [s for s in unique_suggestions if s.lower() != title_search.lower()]
+            unique_suggestions.sort(key=lambda s: (len(s), s.lower()))
+            top_suggestions = unique_suggestions[:10]
+
+            if len(top_suggestions) == 1:
+                suggested_title = top_suggestions[0]
+                result, _ = await asyncio.to_thread(self._search_database, suggested_title)
+                if result:
+                    did_you_mean_message = f"Did you mean: **{suggested_title}**?\n\n"
+                    return did_you_mean_message + self._format_page_content(result)
+                else:
+                    await message.delete()
+                    dm_message = f"I found a suggestion '{suggested_title}', but couldn't retrieve its content."
+                    await message.author.send(dm_message)
+                    return None
+            elif len(top_suggestions) > 1:
+                await message.delete()
+                suggestions_str = "\n".join([f"- {s}" for s in top_suggestions])
+                dm_message = (
+                    f"No exact match found for '{title_search}'. Did you mean one of these?\n\n"
+                    f"{suggestions_str}\n\n"
+                    f"You can refine your search by replying here in this DM (e.g., `/huh [new search term]`)."
+                )
+                await message.author.send(dm_message)
+                return None
+            else:
+                await message.delete()
+                dm_message = f"Sorry, I couldn't find any other relevant suggestions matching '{title_search}'."
+                await message.author.send(dm_message)
+                return None
+        else:
+            await message.delete()
+            dm_message = f"Sorry, I couldn't find any content matching the significant terms in: '{title_search}'."
+            await message.author.send(dm_message)
+            return None
+
+    def _search_database(self, title_search):
 
         try:
             conn = sqlite3.connect(self.db_name)
             conn.row_factory = sqlite3.Row
             with conn:
                 cursor = conn.cursor()
-                # Exact match query
                 cursor.execute("SELECT title, breadcrumbs, markdown_content, url, is_power, power_level, power_cost FROM pages WHERE LOWER(title) = LOWER(?)", (title_search,))
                 result = cursor.fetchone()
 
                 if result:
-                    return self._format_page_content(result)
+                    return result, None
                 else:
-                    # If no exact match, search for similar titles
                     search_words_tokenized = title_search.lower().split()
                     filtered_search_words = [word for word in search_words_tokenized if word not in STOP_WORDS]
 
                     if not filtered_search_words:
-                        # All words were stop words, attempt to DM user
-                        try:
-                            await message.delete()
-                        except Exception: pass # Best effort to delete
-                        dm_msg = "Your search query was too generic after removing common words. Please try more specific terms."
-                        try:
-                            await message.author.send(dm_msg)
-                            return None
-                        except Exception: # Fallback if DM fails
-                            return dm_msg 
+                        return None, []
 
-                    logging.info(f"Filtered search words: {filtered_search_words}")
-                    
                     conditions = " AND ".join(["LOWER(title) LIKE LOWER(?)"] * len(filtered_search_words))
                     suggestions_query = f"SELECT title FROM pages WHERE {conditions}"
-                    query_params = [f"%{word}%" for word in filtered_search_words] 
+                    query_params = [f"%{word}%" for word in filtered_search_words]
                     
                     cursor.execute(suggestions_query, query_params)
                     suggestions = [row['title'] for row in cursor.fetchall()]
-
-                    if suggestions:
-                        unique_suggestions = list(set(suggestions))
-                        unique_suggestions = [s for s in unique_suggestions if s.lower() != original_title_search_lower]
-                        unique_suggestions.sort(key=lambda s: (len(s), s.lower()))
-                        top_suggestions = unique_suggestions[:10]
-
-                        if len(top_suggestions) == 1:
-                            suggested_title = top_suggestions[0]
-                            logging.info(f"Only one suggestion found after filtering: {suggested_title}. Displaying it.")
-                            cursor.execute("SELECT title, breadcrumbs, markdown_content, url, is_power, power_level, power_cost FROM pages WHERE LOWER(title) = LOWER(?)", (suggested_title,))
-                            page_data = cursor.fetchone()
-                            if page_data:
-                                did_you_mean_message = f"Did you mean: **{suggested_title}**?\n\n"
-                                return did_you_mean_message + self._format_page_content(page_data)
-                            else:
-                                # Case: single suggestion but no data for it (should be rare)
-                                try:
-                                    await message.delete()
-                                except Exception: pass 
-                                dm_message = f"I found a suggestion '{suggested_title}', but couldn't retrieve its content."
-                                try:
-                                    await message.author.send(dm_message)
-                                    return None
-                                except Exception: 
-                                    return f"I found a suggestion '{suggested_title}', but couldn't retrieve its content. (DM failed)"
-
-                        elif len(top_suggestions) > 1:
-                            try:
-                                await message.delete()
-                                logging.info(f"Deleted original message from {message.author.name} (multiple suggestions).")
-                            except discord.Forbidden:
-                                logging.warning(f"Could not delete message for {message.author.name} (multiple suggestions) - Missing Permissions.")
-                            except Exception as e:
-                                logging.error(f"Error deleting message (multiple suggestions): {e}")
-    
-                            suggestions_str = "\n".join([f"- {s}" for s in top_suggestions])
-                            dm_message = (
-                                f"No exact match found for '{title_search}'. Did you mean one of these?\n\n"
-                                f"{suggestions_str}\n\n"
-                                f"You can refine your search by replying here in this DM (e.g., `/huh [new search term]`)."
-                            )
-                            try:
-                                await message.author.send(dm_message)
-                                logging.info(f"Sent DM to {message.author.name} with multiple suggestions and refinement tip.")
-                                return None 
-                            except discord.Forbidden:
-                                logging.warning(f"Could not send DM to {message.author.name} (multiple suggestions) - DMs might be disabled.")
-                                return f"No exact match for '{title_search}'. I tried to DM you suggestions, but couldn't. Please check your DM settings."
-                            except Exception as e:
-                                logging.error(f"Error sending DM (multiple suggestions): {e}")
-                                return "An error occurred while trying to send you suggestions."
-                        
-                        # This 'else' means len(top_suggestions) == 0 after filtering and sorting an initially non-empty 'suggestions' list
-                        # This path should now be caught by the outer 'else' if 'suggestions' itself was empty after query
-                        else: # No relevant suggestions after filtering (e.g., only the original title was a suggestion)
-                            logging.info(f"No *other* relevant suggestions found for '{title_search}' for user {message.author.name}.")
-                            try:
-                                await message.delete()
-                            except Exception: pass
-                            dm_message = f"Sorry, I couldn't find any other relevant suggestions matching '{title_search}'."
-                            try:
-                                await message.author.send(dm_message)
-                                return None
-                            except Exception:
-                                return f"Sorry, I couldn't find any other relevant suggestions for '{title_search}'. (DM failed)"
-                    
-                    else: # No suggestions from the SQL query (after stop word removal)
-                        logging.info(f"No content or suggestions found from SQL query for '{title_search}' for user {message.author.name}.")
-                        try:
-                            await message.delete()
-                        except Exception: pass
-                        dm_message = f"Sorry, I couldn't find any content matching the significant terms in: '{title_search}'."
-                        try:
-                            await message.author.send(dm_message)
-                            return None
-                        except Exception:
-                            return f"Sorry, I couldn't find any content for '{title_search}'. (DM failed)"
-
+                    return None, suggestions
         except Exception as e:
             logging.exception(f"Error during database operation or processing for '{title_search}': {e}")
-            return "An error occurred while processing the command."
+            return None, None
+
 
     def _format_page_content(self, page_data: sqlite3.Row): # Return type can be str or list[str]
         """Helper function to format the page content for display."""
@@ -224,7 +177,7 @@ class Huh:
 
 
         if len(full_response) > 1950: # Use a conservative limit like 1950
-            logging.info(f"Response for '{page_title}' is long ({len(full_response)} chars), attempting to chunk.")
+
             chunks = []
             current_chunk = ""
             
@@ -260,7 +213,7 @@ class Huh:
                     final_chunks_pass1.append(chunk_pass1)
             
             if not needs_hard_split:
-                logging.info(f"Returning {len(final_chunks_pass1)} chunks for '{page_title}' after paragraph/line splitting.")
+
                 return final_chunks_pass1
 
             # Final pass: hard split any remaining oversized chunks
@@ -271,7 +224,7 @@ class Huh:
                         final_chunks_pass2.append(chunk_pass2[i_split:i_split + 1950])
                 else:
                     final_chunks_pass2.append(chunk_pass2)
-            logging.info(f"Returning {len(final_chunks_pass2)} chunks for '{page_title}' after hard splitting.")
+
             return final_chunks_pass2
             
         return full_response

@@ -24,17 +24,6 @@ ALERT_EMAIL=${ALERT_EMAIL:-""}
 
 # --- Helper Functions ---
 
-# This function configures the health checks on the deployed Cloud Run service
-configure_run_service() {
-    echo "--- Configuring Health Checks for Cloud Run service ---"
-    gcloud run services update "$SERVICE_NAME" \
-      --project="$GCP_PROJECT_ID" \
-      --region="$GCP_REGION" \
-      --startup-probe=path=/health,period=15,timeout=10,failure-threshold=24 \
-      --liveness-probe=path=/health,period=30,timeout=10,failure-threshold=3
-    echo "--- Health Checks configured ---"
-}
-
 # This function sets up monitoring alerts for the service
 setup_monitoring() {
     if [ -z "$ALERT_EMAIL" ]; then
@@ -146,6 +135,35 @@ else
     fi
 fi
 
+# Deploy Firestore indexes
+echo "Deploying Firestore indexes..."
+
+# Create composite index for sent_date + timestamp query
+echo "Creating composite index for summary_messages (sent_date, timestamp)..."
+if gcloud firestore indexes composite create \
+    --project="$GCP_PROJECT_ID" \
+    --collection-group="summary_messages" \
+    --field-config="field-path=sent_date,order=ascending" \
+    --field-config="field-path=timestamp,order=ascending" \
+    --quiet 2>/dev/null; then
+    echo "Successfully created composite index for sent_date + timestamp."
+else
+    echo "Composite index may already exist (this is okay)."
+fi
+
+# Create single field index for timestamp (if needed)
+echo "Creating single field index for summary_messages (timestamp)..."
+if gcloud firestore indexes fields create \
+    --project="$GCP_PROJECT_ID" \
+    --collection-group="summary_messages" \
+    --field-path="timestamp" \
+    --index="order=ascending" \
+    --quiet 2>/dev/null; then
+    echo "Successfully created single field index for timestamp."
+else
+    echo "Single field index may already exist (this is okay)."
+fi
+
 if [ ! -f .env ]; then
     echo ".env file not found. Please copy .env.example to .env and fill in your secrets."
     exit 1
@@ -182,7 +200,6 @@ gcloud builds submit --region=$GCP_REGION --config=cloudbuild.yaml \
 
 # --- Post-Deployment Steps ---
 # These are called now that the main deployment has finished.
-configure_run_service
 setup_monitoring
 
 echo "Deployment successful!"

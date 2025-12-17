@@ -5,8 +5,7 @@ import pathlib
 import discord
 import asyncio
 import importlib
-import tracemalloc
-import linecache
+
 from datetime import datetime
 from dotenv import load_dotenv
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -15,35 +14,20 @@ import google.generativeai as genai
 from google.cloud import firestore  # Add Firestore import
 from modules import pdf_generator
 
-# --- Memory Profiling ---
-last_snapshot = None
+# --- Health Monitoring ---
+def periodic_health_check():
+    """Periodic health check to keep the container alive and monitor status."""
+    logger.info("🔄 Periodic health check - Bot is alive and monitoring")
+
+def connection_keepalive():
+    """Keepalive function to prevent Cloud Run from scaling to zero."""
+    logger.info("💓 Keepalive - Maintaining Cloud Run instance")
 
 def log_memory_usage():
-    global last_snapshot
-    
-    if not tracemalloc.is_tracing():
-        logger.warning("Tracemalloc is not running, can't log memory usage.")
-        return
-        
-    current_snapshot = tracemalloc.take_snapshot()
-    
-    if last_snapshot:
-        top_stats = current_snapshot.compare_to(last_snapshot, 'lineno')
-        
-        total_growth = sum(stat.size_diff for stat in top_stats)
-        if total_growth > 0:
-            logger.info(f"--- Memory Usage Growth Detected (Total: {total_growth / 1024:.2f} KiB) ---")
-            for i, stat in enumerate(top_stats[:10], 1):
-                frame = stat.traceback[0]
-                logger.info(f"#{i}: {frame.filename}:{frame.lineno}: {stat.size_diff / 1024:.2f} KiB growth")
-                logger.info(f"    Line: {linecache.getline(frame.filename, frame.lineno).strip()}")
-        else:
-            logger.info("No significant memory growth since last check.")
+    # Memory profiling disabled to keep logs clean
+    pass
 
-    last_snapshot = current_snapshot
 
-def heartbeat():
-    logger.info("Bot is still alive.")
 
 # --- End Memory Profiling ---
 
@@ -51,12 +35,26 @@ def heartbeat():
 load_dotenv()
 
 # --- HTTP Health Check Server Imports ---
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler
+from socketserver import ThreadingMixIn
+from http.server import HTTPServer
 import threading
+
+class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
+    """Handle requests in a separate thread."""
 # --- End HTTP Health Check Server Imports ---
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(name)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+# Set specific loggers to reduce noise
+logging.getLogger('discord').setLevel(logging.WARNING)  # Only show warnings/errors from discord.py
+logging.getLogger('discord.gateway').setLevel(logging.ERROR)  # Only show errors from gateway
+logging.getLogger('discord.client').setLevel(logging.WARNING)  # Only show warnings/errors from client
+logging.getLogger('discord.state').setLevel(logging.WARNING)  # Only show warnings/errors from state
+logging.getLogger('apscheduler').setLevel(logging.WARNING)  # Reduce scheduler noise
+logging.getLogger('apscheduler.executors.default').setLevel(logging.ERROR)  # Only errors from executors
+logging.getLogger('apscheduler.scheduler').setLevel(logging.WARNING)  # Reduce scheduler debug messages
 
 
 # --- Health Check HTTP Server ---
@@ -84,7 +82,7 @@ def run_health_server(bot_client_for_check: discord.Client = None): # Optional: 
     port = int(os.environ.get("PORT", 8080))
     server_address = ('0.0.0.0', port) # Listen on all interfaces
     
-    httpd = HTTPServer(server_address, HealthCheckHandler)
+    httpd = ThreadingHTTPServer(server_address, HealthCheckHandler)
     logger.info(f"Health check HTTP server starting on port {port}...")
     try:
         httpd.serve_forever()
@@ -127,6 +125,7 @@ async def process_command(client: discord.Client, message: discord.Message, comm
                     if chunk and str(chunk).strip():
                         await message.channel.send(str(chunk), suppress_embeds=True)
                         logger.info(f"Sent chunk {i+1}/{len(result)} for command '{command_name}'. Length: {len(str(chunk))}")
+                        await asyncio.sleep(0.1) # Add a small delay to avoid rate limits
             
             elif isinstance(result, str):
                 stripped_result = result.strip()
@@ -140,6 +139,7 @@ async def process_command(client: discord.Client, message: discord.Message, comm
                     for i, chunk in enumerate(chunks):
                         await message.channel.send(chunk, suppress_embeds=True)
                         logger.info(f"Sent re-chunked part {i+1}/{len(chunks)}. Length: {len(chunk)}")
+                        await asyncio.sleep(0.1) # Add a small delay to avoid rate limits
                 else:
                     await message.channel.send(stripped_result, suppress_embeds=True)
             
@@ -157,6 +157,7 @@ async def process_command(client: discord.Client, message: discord.Message, comm
                         for i, chunk in enumerate(chunks):
                             await message.channel.send(chunk, suppress_embeds=True)
                             logger.info(f"Sent chunked part {i+1}/{len(chunks)} from converted type. Length: {len(chunk)}")
+                            await asyncio.sleep(0.1) # Add a small delay to avoid rate limits
                     else:
                         await message.channel.send(str_result, suppress_embeds=True)
                 except Exception as send_exc:
@@ -199,6 +200,12 @@ class MyClient(discord.Client):
         logger.info("MyClient initialized.")
 
     async def on_ready(self):
+        # Set Discord logging levels after client is ready
+        logging.getLogger('discord').setLevel(logging.WARNING)
+        logging.getLogger('discord.gateway').setLevel(logging.ERROR)
+        logging.getLogger('discord.client').setLevel(logging.WARNING)
+        logging.getLogger('discord.state').setLevel(logging.WARNING)
+        
         logger.info(f"Logged in as {self.user} (ID: {self.user.id})")
         logger.info(f"Bot is in {len(self.guilds)} guilds:")
         for guild in self.guilds:
@@ -209,6 +216,21 @@ class MyClient(discord.Client):
         
         self.scheduler.start()
         logger.info("Scheduler started.")
+
+    async def on_disconnect(self):
+        logger.warning("Discord connection lost! Bot disconnected.")
+
+    async def on_resumed(self):
+        logger.info("Discord connection resumed successfully.")
+
+    async def on_connect(self):
+        logger.info("Discord connection established.")
+
+    async def on_shard_disconnect(self, shard_id):
+        logger.warning(f"Shard {shard_id} disconnected.")
+
+    async def on_shard_resumed(self, shard_id):
+        logger.info(f"Shard {shard_id} resumed.")
 
     async def run_startup_checks(self):
         """Runs health checks at startup and logs the results."""
@@ -320,16 +342,28 @@ async def send_digest_pdf(client: discord.Client, summary_module, gemini_model):
 
     executive_summary = ""
     if gemini_model:
+        def _generate_summary_sync(prompt):
+            try:
+                # Use the synchronous method for running in a separate thread
+                response = gemini_model.generate_content(prompt)
+                logger.info("Successfully generated executive summary from Gemini.")
+                return response.text
+            except Exception as e:
+                logger.error(f"Failed to generate summary from Gemini: {e}", exc_info=True)
+                return "Error generating summary."
+
         try:
             default_prompt = "Please provide an executive summary of the following messages:\n\n"
             prompt_instructions = os.environ.get("LOTSLARP_DISCORD_BOT_GEMINI_PROMPT", default_prompt)
             prompt = f"{prompt_instructions}\n\n" + "\n".join(plain_text_for_summary)
-            response = await gemini_model.generate_content_async(prompt)
-            executive_summary = response.text
-            logger.info("Successfully generated executive summary from Gemini.")
+            
+            # Run the synchronous generation in a separate thread
+            executive_summary = await asyncio.to_thread(_generate_summary_sync, prompt)
+
         except Exception as e:
-            logger.error(f"Failed to generate summary from Gemini: {e}", exc_info=True)
-            executive_summary = "Error generating summary."
+            # This catches errors from the to_thread call itself, though the inner function handles its own.
+            logger.error(f"An error occurred while trying to run summary generation in a thread: {e}", exc_info=True)
+            executive_summary = "Error: Summary generation process failed."
 
     # Get cadence name for titles and create date range
     cadence_name = os.environ.get("LOTSLARP_DISCORD_BOT_DIGEST_CADENCE_NAME", "Daily")
@@ -541,49 +575,61 @@ def setup_bot():
 
         scheduler.add_job(summary_module_instance.delete_old_messages, 'cron', hour=0)
 
-    # Schedule memory profiling and heartbeat jobs
-    scheduler.add_job(log_memory_usage, 'interval', minutes=5)
-    scheduler.add_job(heartbeat, 'interval', minutes=1)
+    # Schedule health monitoring and keepalive jobs
+    scheduler.add_job(periodic_health_check, 'interval', minutes=30)  # Health check every 30 minutes
+    scheduler.add_job(connection_keepalive, 'interval', minutes=10)   # Keepalive every 10 minutes
+    scheduler.add_job(log_memory_usage, 'interval', minutes=60)       # Reduced memory logging
 
     return client
 
 
-if __name__ == "__main__":
-    logger.info("Application entry point (__main__) reached.")
+async def main():
+    logger.info("Application entry point reached.")
     
-    # Start tracemalloc
-    tracemalloc.start()
-    logger.info("Tracemalloc started for memory profiling.")
+    # Memory profiling disabled to keep logs clean
     
+    # Run the health check server in a separate thread
     health_server_thread = threading.Thread(target=run_health_server, daemon=True)
     health_server_thread.start()
     logger.info("Health check server thread initiated.")
 
-    try:
-        # Setup bot and get client
-        client = setup_bot()
-        
-        # Proceed with bot execution if token is present
-        token = os.environ.get("LOTSLARP_DISCORD_BOT_DISCORD_TOKEN")
-        if not token:
-            logger.error("LOTSLARP_DISCORD_BOT_DISCORD_TOKEN not found. Bot cannot start.")
-        else:
-            logger.info("Attempting to run Discord client...")
-            try:
-                # Set discord.py logging to INFO
-                discord_logger = logging.getLogger('discord')
-                discord_logger.setLevel(logging.INFO)
-                
-                logger.debug("Calling client.run(token)...")
-                client.run(token) 
-                logger.debug("client.run(token) has exited.")
+    # Setup and connect the Discord client
+    client = setup_bot()
+    token = os.environ.get("LOTSLARP_DISCORD_BOT_DISCORD_TOKEN")
+    if not token:
+        logger.critical("LOTSLARP_DISCORD_BOT_DISCORD_TOKEN not found. Bot cannot start.")
+        return
 
-            except discord.errors.LoginFailure:
-                logger.error("Login to Discord failed. Please check your token.", exc_info=True)
-            except Exception as e:
-                logger.error(f"An error occurred while running the client: {e}", exc_info=True)
-
-    except Exception as main_exc:
-        logger.critical(f"An unhandled exception occurred in the main execution block: {main_exc}", exc_info=True)
+    # Retry logic for Discord connection
+    max_retries = 3
+    retry_delay = 30  # seconds
     
-    logger.info("Application main thread finished or bot logic exited.")
+    for attempt in range(max_retries):
+        try:
+            logger.info(f"Starting Discord client (attempt {attempt + 1}/{max_retries})")
+            async with client:
+                await client.start(token)
+            break  # If we get here, connection was successful
+        except discord.errors.LoginFailure:
+            logger.critical("Login to Discord failed. Please check your token.", exc_info=True)
+            break  # Don't retry login failures
+        except Exception as e:
+            logger.error(f"Discord client error (attempt {attempt + 1}/{max_retries}): {e}", exc_info=True)
+            if attempt < max_retries - 1:
+                logger.info(f"Retrying in {retry_delay} seconds...")
+                await asyncio.sleep(retry_delay)
+            else:
+                logger.critical("Max retries reached. Bot startup failed.")
+        finally:
+            logger.info("Discord client connection ended.")
+
+
+if __name__ == "__main__":
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        logger.info("Received KeyboardInterrupt. Shutting down.")
+    except Exception as e:
+        logger.critical(f"A critical error in the main asyncio loop: {e}", exc_info=True)
+    finally:
+        logger.info("Application main thread finished or bot logic exited.")

@@ -3,6 +3,7 @@ import logging
 import discord
 import asyncio # Added this import
 from google.cloud.firestore_v1.base_client import BaseClient
+from google.cloud.firestore_v1 import FieldFilter
 
 class Summary:
     def __init__(self, db_client: BaseClient):
@@ -67,7 +68,7 @@ class Summary:
         return await asyncio.to_thread(self._get_messages_for_digest_sync)
 
     def _get_messages_for_digest_sync(self):
-        query = self.collection_ref.where('sent_date', '==', None).order_by('timestamp')
+        query = self.collection_ref.where(filter=FieldFilter('sent_date', '==', None)).order_by('timestamp')
         docs = query.stream()
         
         # Firestore documents need to be converted to a format that the calling function expects.
@@ -94,7 +95,7 @@ class Summary:
         return await asyncio.to_thread(self._get_messages_since_sync, start_date)
 
     def _get_messages_since_sync(self, start_date):
-        query = self.collection_ref.where('timestamp', '>=', start_date).order_by('timestamp')
+        query = self.collection_ref.where(filter=FieldFilter('timestamp', '>=', start_date)).order_by('timestamp')
         docs = query.stream()
         
         messages = []
@@ -168,7 +169,7 @@ class Summary:
         six_weeks_ago = datetime.datetime.utcnow() - datetime.timedelta(weeks=6)
         logging.info(f"Deleting messages older than {six_weeks_ago}...")
         
-        query = self.collection_ref.where('timestamp', '<', six_weeks_ago)
+        query = self.collection_ref.where(filter=FieldFilter('timestamp', '<', six_weeks_ago))
         deleted_count = self._delete_collection_in_batches(query, 100)
         
         if deleted_count > 0:

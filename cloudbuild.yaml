@@ -24,6 +24,11 @@ steps:
       - 'managed'
       - '--port'
       - '8080'
+      - '--cpu=2'
+      - '--memory=1Gi'
+      - '--no-cpu-throttling'
+      - '--min-instances=1'
+      - '--max-instances=3'
       - '--no-allow-unauthenticated'
       # --- Environment Variables ---
       # The deploy.sh script will create/update the secrets in Google Secret Manager.

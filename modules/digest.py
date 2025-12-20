@@ -1,13 +1,16 @@
 import discord
 import os
+import asyncio
 from datetime import datetime, timedelta
 from modules import pdf_generator
+from modules.utils import smart_chunk_message
 
 class Digest:
-    def __init__(self, summary_module, gemini_model, pdf_gen):
+    def __init__(self, summary_module, gemini_model, pdf_gen, lore_manager=None):
         self.summary_module = summary_module
         self.gemini_model = gemini_model
         self.pdf_generator = pdf_gen
+        self.lore_manager = lore_manager
         self.name = "digest"
 
     async def run(self, client: discord.Client, message: discord.Message):
@@ -30,6 +33,7 @@ class Digest:
         
         await message.channel.send(f"Generating summary digest for the last {timeframe}...", suppress_embeds=True)
 
+        # get_messages_since returns [channel_id, guild_id, author_name, message_content, message_url, doc_id, author_display_name, channel_name, timestamp]
         messages_data = await self.summary_module.get_messages_since(start_date)
         if not messages_data:
             await message.channel.send(f"No messages found for the last {timeframe}.")
@@ -41,24 +45,29 @@ class Digest:
         unique_authors = set()
         
         for row in messages_data:
-            channel_id, guild_id, author_name, message_content, message_url, msg_id = row
+            channel_id, guild_id, author_name, message_content, message_url, msg_id, author_display_name, channel_name, msg_timestamp = row
             guild = client.get_guild(guild_id)
             channel = client.get_channel(channel_id)
             guild_name = guild.name if guild else "Unknown Server"
-            channel_name = channel.name if channel else "Unknown Channel"
+            channel_name = channel_name or (channel.name if channel else "Unknown Channel")
             
+            # Format timestamp
+            ts_str = msg_timestamp.strftime('%m/%d %H:%M') if msg_timestamp else "??:??"
+
             messages_for_pdf.append({
                 "guild_name": guild_name,
                 "channel_name": channel_name,
                 "author_name": author_name,
+                "author_display_name": author_display_name,
                 "message_content": message_content,
                 "message_url": message_url,
+                "timestamp": ts_str
             })
-            plain_text_for_summary.append(f"Server: {guild_name}, Channel: {channel_name}, Author: {author_name}\n{message_content}\n")
+            plain_text_for_summary.append(f"[{ts_str}] Server: {guild_name}, Channel: {channel_name}, Author: {author_display_name or author_name}\n{message_content}\n")
             
             # Calculate statistics
             total_message_length += len(message_content)
-            unique_authors.add(author_name)
+            unique_authors.add(author_display_name or author_name)
         
         # Prepare message statistics
         message_count = len(messages_data)
@@ -73,9 +82,19 @@ class Digest:
         executive_summary = ""
         if self.gemini_model:
             try:
+                # RAG Integration
+                all_text = "\n".join(plain_text_for_summary)
+                lore_context = ""
+                if self.lore_manager:
+                    try:
+                        lore_context = await self.lore_manager.get_relevant_lore(all_text)
+                    except Exception as e:
+                        # Log error but continue
+                        print(f"Error fetching lore: {e}")
+
                 default_prompt = f"Please provide an executive summary of the following messages from the last {timeframe}:\n\n"
                 prompt_instructions = os.environ.get("LOTSLARP_DISCORD_BOT_GEMINI_PROMPT", default_prompt)
-                prompt = f"{prompt_instructions}\n\n" + "\n".join(plain_text_for_summary)
+                prompt = f"{prompt_instructions}\n{lore_context}\n" + all_text
                 response = await self.gemini_model.generate_content_async(prompt)
                 executive_summary = response.text
             except Exception as e:
@@ -99,24 +118,41 @@ class Digest:
             await message.channel.send("An error occurred while generating the PDF report.")
             return
 
+        # Build Message Index
+        message_index = "\n**Message Index:**\n"
+        for msg in messages_for_pdf:
+            author = msg['author_display_name'] or msg['author_name']
+            channel = msg['channel_name']
+            url = msg['message_url']
+            ts = msg.get('timestamp', '??:??')
+            message_index += f"• `{ts}` [#{channel}]({url}) - {author}\n"
+
         # Prepare Discord message with summary
         discord_message = f"**{pdf_title} - {date_range}**\n\n"
+        
+        discord_message += "**Storyteller Summary:**\n"
+        discord_message += executive_summary + "\n"
+
+        discord_message += message_index + "\n"
+
         discord_message += "**Message Statistics:**\n"
         for stat in message_stats:
             discord_message += f"• {stat}\n"
-        discord_message += "\n**Storyteller Summary:**\n"
         
-        # Truncate summary for Discord if too long
-        if len(executive_summary) > 1200:
-            discord_message += executive_summary[:1200] + "...\n\n*(Full summary available in attached PDF)*"
-        else:
-            discord_message += executive_summary
+        # Use smart chunking
+        chunks = smart_chunk_message(discord_message, 1950)
 
         # Send PDF to channel with summary
         try:
             with open(pdf_path, "rb") as f:
                 pdf_file = discord.File(f, filename=os.path.basename(pdf_path))
-                await message.channel.send(discord_message, file=pdf_file)
+                
+                for i, chunk in enumerate(chunks):
+                    if i == len(chunks) - 1:
+                        await message.channel.send(chunk, file=pdf_file)
+                    else:
+                        await message.channel.send(chunk)
+                        await asyncio.sleep(0.5)
         except Exception as e:
             await message.channel.send(f"An error occurred while sending the PDF report: {e}")
         finally:

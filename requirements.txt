@@ -13,3 +13,4 @@ apscheduler
 google-generativeai
 fpdf2
 google-cloud-firestore
+firebase-admin

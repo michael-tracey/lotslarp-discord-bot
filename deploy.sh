@@ -26,6 +26,11 @@ ALERT_EMAIL=${ALERT_EMAIL:-""}
 
 # This function sets up monitoring alerts for the service
 setup_monitoring() {
+    # Extract ALERT_EMAIL from .env file
+    if [ -f .env ]; then
+        ALERT_EMAIL=$(grep "^ALERT_EMAIL=" .env | cut -d '=' -f 2- | tr -d '"')
+    fi
+    
     if [ -z "$ALERT_EMAIL" ]; then
         echo "ALERT_EMAIL is not set. Skipping monitoring setup."
         return
@@ -35,7 +40,8 @@ setup_monitoring() {
     echo "Alerts will be sent to: $ALERT_EMAIL"
 
     # 1. Find or create the notification channel
-    CHANNEL_ID=$(gcloud beta monitoring channels list --project="$GCP_PROJECT_ID" --filter="displayName=\"Email Alert: $ALERT_EMAIL\"" --format="value(name)")
+    # Use GA command
+    CHANNEL_ID=$(gcloud monitoring channels list --project="$GCP_PROJECT_ID" --filter="displayName=\"Email Alert: $ALERT_EMAIL\"" --format="value(name)" 2>/dev/null)
 
     if [ -z "$CHANNEL_ID" ]; then
         echo "Notification channel for $ALERT_EMAIL not found. Creating it..."
@@ -48,12 +54,13 @@ setup_monitoring() {
   "labels": { "email_address": "$ALERT_EMAIL" }
 }
 EOL
-        CHANNEL_ID=$(gcloud beta monitoring channels create --project="$GCP_PROJECT_ID" --channel-content-from-file="$CHANNEL_JSON" --format="value(name)")
+        CHANNEL_ID=$(gcloud monitoring channels create --project="$GCP_PROJECT_ID" --channel-content-from-file="$CHANNEL_JSON" --format="value(name)")
         rm "$CHANNEL_JSON"
 
         if [ -z "$CHANNEL_ID" ]; then
             echo "Error: Failed to create notification channel."
-            exit 1
+            # Don't exit, just return
+            return
         else
             echo "Successfully created notification channel."
             echo "IMPORTANT: A verification email has been sent to $ALERT_EMAIL. You must click the link in it to enable notifications."
@@ -64,7 +71,8 @@ EOL
 
     # 2. Find or create the alert policy
     POLICY_DISPLAY_NAME="Cloud Run Restarts - $SERVICE_NAME"
-    POLICY_ID=$(gcloud alpha monitoring policies list --project="$GCP_PROJECT_ID" --filter="displayName=\"$POLICY_DISPLAY_NAME\"" --format="value(name)")
+    # Use GA command and suppress warning if list is empty
+    POLICY_ID=$(gcloud monitoring policies list --project="$GCP_PROJECT_ID" --filter="displayName=\"$POLICY_DISPLAY_NAME\"" --format="value(name)" 2>/dev/null)
 
     if [ -z "$POLICY_ID" ]; then
         echo "Alert policy '$POLICY_DISPLAY_NAME' not found. Creating it..."
@@ -92,10 +100,12 @@ EOL
   }
 }
 EOL
-        if gcloud alpha monitoring policies create --project="$GCP_PROJECT_ID" --policy-from-file="$POLICY_JSON"; then
+        # Use GA command
+        if gcloud monitoring policies create --project="$GCP_PROJECT_ID" --policy-from-file="$POLICY_JSON"; then
             echo "Successfully created alert policy."
         else
-            echo "Error: Failed to create alert policy."
+            echo "Warning: Failed to create alert policy. This is likely because the 'restart_count' metric hasn't been generated yet for this new service."
+            echo "The alerting policy can be created later by re-running this script once the service has been running for a few minutes."
         fi
         rm "$POLICY_JSON"
     else
@@ -169,12 +179,6 @@ if [ ! -f .env ]; then
     exit 1
 fi
 
-read -p "Do you want to continue? (y/n) " -n 1 -r
-echo
-if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-    exit 1
-fi
-
 # Create/update secrets
 echo "Creating/updating secrets in Google Secret Manager..."
 while IFS= read -r line || [[ -n "$line" ]]; do
@@ -184,14 +188,34 @@ while IFS= read -r line || [[ -n "$line" ]]; do
     value=$(echo "$value" | sed 's/^"//;s/"$//')
     
     if gcloud secrets describe "$key" --project="$GCP_PROJECT_ID" >/dev/null 2>&1; then
-        echo "Updating secret: $key"
-        printf "%s" "$value" | gcloud secrets versions add "$key" --project="$GCP_PROJECT_ID" --data-file=-
+        # Check if value has changed
+        current_value=$(gcloud secrets versions access latest --secret="$key" --project="$GCP_PROJECT_ID" 2>/dev/null)
+        if [ "$current_value" != "$value" ]; then
+            echo "Updating secret: $key"
+            printf "%s" "$value" | gcloud secrets versions add "$key" --project="$GCP_PROJECT_ID" --data-file=-
+        else
+            echo "Secret $key is up to date."
+        fi
     else
         echo "Creating secret: $key"
         gcloud secrets create "$key" --replication-policy=automatic --project="$GCP_PROJECT_ID"
         printf "%s" "$value" | gcloud secrets versions add "$key" --project="$GCP_PROJECT_ID" --data-file=-
     fi
 done < .env
+
+# Check for glossary.csv and upload if present
+if [ -f "glossary.csv" ]; then
+    echo "Found glossary.csv. Ensuring dependencies are installed..."
+    python3 -m pip install -r requirements.txt --quiet
+    echo "Uploading to Firestore..."
+    if python3 upload_glossary.py; then
+        echo "Glossary upload successful."
+    else
+        echo "Warning: Glossary upload failed. Continuing deployment..."
+    fi
+else
+    echo "glossary.csv not found. Skipping glossary upload."
+fi
 
 echo "Submitting build to Google Cloud Build..."
 gcloud builds submit --region=$GCP_REGION --config=cloudbuild.yaml \

@@ -5,6 +5,8 @@ import pathlib
 import discord
 import asyncio
 import importlib
+import tracemalloc
+import linecache
 
 from datetime import datetime
 from dotenv import load_dotenv
@@ -13,6 +15,9 @@ from apscheduler.triggers.cron import CronTrigger
 import google.generativeai as genai
 from google.cloud import firestore  # Add Firestore import
 from modules import pdf_generator
+from modules.utils import smart_chunk_message
+from modules.channel_summarize import handle_share_interaction
+from modules.lore import LoreManager
 
 # --- Health Monitoring ---
 def periodic_health_check():
@@ -23,10 +28,34 @@ def connection_keepalive():
     """Keepalive function to prevent Cloud Run from scaling to zero."""
     logger.info("💓 Keepalive - Maintaining Cloud Run instance")
 
-def log_memory_usage():
-    # Memory profiling disabled to keep logs clean
-    pass
+last_snapshot = None
 
+def log_memory_usage():
+    global last_snapshot
+    
+    if not tracemalloc.is_tracing():
+        logger.warning("Tracemalloc is not running, can't log memory usage.")
+        return
+        
+    current_snapshot = tracemalloc.take_snapshot()
+    
+    if last_snapshot:
+        top_stats = current_snapshot.compare_to(last_snapshot, 'lineno')
+        
+        total_growth = sum(stat.size_diff for stat in top_stats)
+        if total_growth > 0:
+            logger.info(f"--- Memory Usage Growth Detected (Total: {total_growth / 1024:.2f} KiB) ---")
+            for i, stat in enumerate(top_stats[:10], 1):
+                frame = stat.traceback[0]
+                logger.info(f"#{i}: {frame.filename}:{frame.lineno}: {stat.size_diff / 1024:.2f} KiB growth")
+                try:
+                    logger.info(f"    Line: {linecache.getline(frame.filename, frame.lineno).strip()}")
+                except Exception:
+                    logger.info("    (Could not retrieve line content)")
+        else:
+            logger.info("No significant memory growth since last check.")
+
+    last_snapshot = current_snapshot
 
 
 # --- End Memory Profiling ---
@@ -47,14 +76,14 @@ class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(name)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Set specific loggers to reduce noise
-logging.getLogger('discord').setLevel(logging.WARNING)  # Only show warnings/errors from discord.py
-logging.getLogger('discord.gateway').setLevel(logging.ERROR)  # Only show errors from gateway
-logging.getLogger('discord.client').setLevel(logging.WARNING)  # Only show warnings/errors from client
-logging.getLogger('discord.state').setLevel(logging.WARNING)  # Only show warnings/errors from state
-logging.getLogger('apscheduler').setLevel(logging.WARNING)  # Reduce scheduler noise
+# Set specific loggers to reduce noise, but allow INFO/DEBUG for main bot activities
+logging.getLogger('discord').setLevel(logging.INFO)  # Show INFO from discord.py
+logging.getLogger('discord.gateway').setLevel(logging.INFO) # Show INFO from gateway for connection status
+logging.getLogger('discord.client').setLevel(logging.INFO)  # Show INFO from client
+logging.getLogger('discord.state').setLevel(logging.INFO)  # Show INFO from state
+logging.getLogger('apscheduler').setLevel(logging.INFO)  # Reduce scheduler noise
 logging.getLogger('apscheduler.executors.default').setLevel(logging.ERROR)  # Only errors from executors
-logging.getLogger('apscheduler.scheduler').setLevel(logging.WARNING)  # Reduce scheduler debug messages
+logging.getLogger('apscheduler.scheduler').setLevel(logging.INFO)  # Allow scheduler info messages
 
 
 # --- Health Check HTTP Server ---
@@ -134,8 +163,8 @@ async def process_command(client: discord.Client, message: discord.Message, comm
                     return
                 
                 if len(stripped_result) > 1950: 
-                    logger.warning(f"String from '{command_name}' exceeded 1950 chars ({len(stripped_result)}), re-chunking in discord_bot.py.")
-                    chunks = [stripped_result[i:i + 1950] for i in range(0, len(stripped_result), 1950)]
+                    logger.warning(f"String from '{command_name}' exceeded 1950 chars ({len(stripped_result)}), re-chunking in discord_bot.py using smart_chunk_message.")
+                    chunks = smart_chunk_message(stripped_result, 1950)
                     for i, chunk in enumerate(chunks):
                         await message.channel.send(chunk, suppress_embeds=True)
                         logger.info(f"Sent re-chunked part {i+1}/{len(chunks)}. Length: {len(chunk)}")
@@ -153,7 +182,7 @@ async def process_command(client: discord.Client, message: discord.Message, comm
 
                     if len(str_result) > 1950:
                         logger.warning(f"Converted string from '{command_name}' (type {type(result)}) exceeded 1950 chars ({len(str_result)}), chunking.")
-                        chunks = [str_result[i:i + 1950] for i in range(0, len(str_result), 1950)]
+                        chunks = smart_chunk_message(str_result, 1950)
                         for i, chunk in enumerate(chunks):
                             await message.channel.send(chunk, suppress_embeds=True)
                             logger.info(f"Sent chunked part {i+1}/{len(chunks)} from converted type. Length: {len(chunk)}")
@@ -275,9 +304,20 @@ class MyClient(discord.Client):
         # Cache message if it contains a mention of the summary role
         if self.summary_role_name and message.role_mentions:
             mentioned_role_names = [role.name for role in message.role_mentions]
+            
+            # --- Detailed Debugging Log ---
+            logger.info("--- Role Mention Detected ---")
+            logger.info(f"Message Content: {message.content}")
+            logger.info(f"Target Role Name: '{self.summary_role_name}'")
+            logger.info(f"message.role_mentions: {message.role_mentions}")
+            logger.info(f"Mentioned Role Names: {mentioned_role_names}")
+            # --- End Debugging Log ---
+
             if self.summary_role_name in mentioned_role_names:
-                logger.info(f"Found summary mention for role '{self.summary_role_name}' in message {message.id}")
+                logger.info(f"SUCCESS: Found summary mention for role '{self.summary_role_name}' in message {message.id}")
                 await self.summary_module.cache_message(message)
+            else:
+                logger.warning(f"FAILURE: Role mention(s) detected, but '{self.summary_role_name}' was not found in the mentioned roles.")
         
         if message.content.startswith("/"):
             await process_command(self, message, self.command_map)
@@ -287,13 +327,76 @@ class MyClient(discord.Client):
             else:
                 logger.debug(f"Ignoring non-command DM message from Author: {message.author.name}")
 
+    async def on_interaction(self, interaction: discord.Interaction):
+        """Handles interactions such as button clicks."""
+        if interaction.type == discord.InteractionType.component:
+            custom_id = interaction.data.get('custom_id', '')
+            if custom_id.startswith('share_summary:'):
+                # We access firestore via the summary_module if it exists
+                firestore_client = None
+                if self.summary_module:
+                    firestore_client = self.summary_module.db
+                
+                if firestore_client:
+                    await handle_share_interaction(interaction, firestore_client)
+                else:
+                    await interaction.response.send_message("❌ Database connection unavailable.", ephemeral=True)
 
-async def send_digest_pdf(client: discord.Client, summary_module, gemini_model):
-    logger.info("Starting daily digest PDF process...")
+
+async def send_digest_pdf(client: discord.Client, summary_module, gemini_model, lore_manager=None, force=False):
+    logger.info(f"Starting digest check... (Force: {force})")
     messages_data = await summary_module.get_messages_for_digest()
+    
+    should_send = False
+    
     if not messages_data:
-        logger.info("No messages to summarize. Skipping PDF generation.")
+        logger.info("No messages to summarize. Skipping digest.")
         return
+
+    if force:
+        logger.info("Digest triggered manually via /digest-now (Force=True).")
+        should_send = True
+    else:
+        # --- Digest Threshold Logic ---
+        try:
+            max_messages = int(os.environ.get("LOTSLARP_BOT_MAX_MESSAGES_BEFORE_DIGEST", 10))
+            max_time_hours = int(os.environ.get("LOTSLARP_BOT_MAX_TIME_BEFORE_DIGEST", 72))
+        except ValueError:
+            logger.error("Invalid digest threshold environment variables. Using defaults (10 msgs, 72 hours).")
+            max_messages = 10
+            max_time_hours = 72
+
+        # 1. Check Message Count
+        if len(messages_data) >= max_messages:
+            logger.info(f"Digest triggered: Message count ({len(messages_data)}) >= Threshold ({max_messages})")
+            should_send = True
+        
+        # 2. Check Time Since First Message (Oldest)
+        # messages_data is ordered by timestamp ascending, so index 0 is oldest.
+        # Format: [..., ..., ..., ..., ..., ..., ..., ..., timestamp]
+        elif len(messages_data) > 0:
+            first_msg_timestamp = messages_data[0][8] # Index 8 is timestamp
+            if first_msg_timestamp:
+                # Ensure timestamp is offset-naive UTC or handle offsets. 
+                # Firestore timestamps usually have tzinfo. discord.py creates tz-aware (UTC).
+                # We'll use datetime.now(timezone.utc) if possible.
+                now = datetime.now(first_msg_timestamp.tzinfo) if first_msg_timestamp.tzinfo else datetime.utcnow()
+                
+                time_diff = now - first_msg_timestamp
+                hours_passed = time_diff.total_seconds() / 3600
+                
+                if hours_passed >= max_time_hours:
+                    logger.info(f"Digest triggered: Time since oldest message ({hours_passed:.2f}h) >= Threshold ({max_time_hours}h)")
+                    should_send = True
+                else:
+                    logger.info(f"Digest threshold not met. Messages: {len(messages_data)}/{max_messages}, Oldest: {hours_passed:.2f}h/{max_time_hours}h ago.")
+            else:
+                logger.warning("Oldest message has no timestamp. Skipping time check.")
+
+    if not should_send:
+        return
+
+    logger.info("Generating and sending digest...")
 
     messages_for_pdf = []
     plain_text_for_summary = []
@@ -303,27 +406,35 @@ async def send_digest_pdf(client: discord.Client, summary_module, gemini_model):
     
     for row in messages_data:
         # Deconstruct the list returned by the summary module
-        # Expected format: [channel_id, guild_id, author_name, message_content, message_url, doc_id]
+        # Expected format: [channel_id, guild_id, author_name, message_content, message_url, doc_id, author_display_name, channel_name, timestamp]
         channel_id = row[0]
         guild_id = row[1]
         author_name = row[2]
         message_content = row[3]
         message_url = row[4]
         msg_id = row[5] # This is now the Firestore document ID (string)
+        author_display = row[6]
+        channel_name_str = row[7]
+        msg_timestamp = row[8]
         
         guild = client.get_guild(guild_id)
         channel = client.get_channel(channel_id)
         guild_name = guild.name if guild else "Unknown Server"
-        channel_name = channel.name if channel else "Unknown Channel"
+        channel_name = channel.name if channel else (channel_name_str or "Unknown Channel")
         
+        # Human-readable timestamp
+        ts_str = msg_timestamp.strftime('%m/%d %H:%M') if msg_timestamp else "??:??"
+
         messages_for_pdf.append({
             "guild_name": guild_name,
             "channel_name": channel_name,
             "author_name": author_name,
+            "author_display_name": author_display,
             "message_content": message_content,
             "message_url": message_url,
+            "timestamp": ts_str
         })
-        plain_text_for_summary.append(f"Server: {guild_name}, Channel: {channel_name}, Author: {author_name}\n{message_content}\n")
+        plain_text_for_summary.append(f"[{ts_str}] Server: {guild_name}, Channel: {channel_name}, Author: {author_display or author_name}\n{message_content}\n")
         message_ids_to_mark_sent.append(msg_id)
         
         # Calculate statistics
@@ -331,6 +442,7 @@ async def send_digest_pdf(client: discord.Client, summary_module, gemini_model):
         unique_authors.add(author_name)
     
     # Prepare message statistics
+    # ... (stats logic unchanged)
     message_count = len(messages_data)
     avg_message_length = total_message_length // message_count if message_count > 0 else 0
     message_stats = [
@@ -353,9 +465,20 @@ async def send_digest_pdf(client: discord.Client, summary_module, gemini_model):
                 return "Error generating summary."
 
         try:
+            # RAG Integration
+            all_text = "\n".join(plain_text_for_summary)
+            lore_context = ""
+            if lore_manager:
+                try:
+                    lore_context = await lore_manager.get_relevant_lore(all_text)
+                    if lore_context:
+                        logger.info("Injected relevant lore into digest prompt.")
+                except Exception as e:
+                    logger.error(f"Error fetching lore for digest: {e}")
+
             default_prompt = "Please provide an executive summary of the following messages:\n\n"
             prompt_instructions = os.environ.get("LOTSLARP_DISCORD_BOT_GEMINI_PROMPT", default_prompt)
-            prompt = f"{prompt_instructions}\n\n" + "\n".join(plain_text_for_summary)
+            prompt = f"{prompt_instructions}\n{lore_context}\n" + all_text
             
             # Run the synchronous generation in a separate thread
             executive_summary = await asyncio.to_thread(_generate_summary_sync, prompt)
@@ -406,22 +529,45 @@ async def send_digest_pdf(client: discord.Client, summary_module, gemini_model):
         return
 
     try:
-        # Prepare Discord message with summary and statistics
+        # Build Message Index
+        message_index = "\n**Message Index:**\n"
+        for row in messages_data:
+            # row: [channel_id, guild_id, author_name, message_content, message_url, doc_id, author_display_name, channel_name, timestamp]
+            url_idx = row[4]
+            author_display = row[6] or row[2] # Fallback to author_name if display name missing
+            channel_name = row[7] or "Unknown Channel"
+            ts_idx = row[8]
+            ts_idx_str = ts_idx.strftime('%m/%d %H:%M') if ts_idx else "??:??"
+            
+            message_index += f"• `{ts_idx_str}` [#{channel_name}]({url_idx}) - {author_display}\n"
+
+        # Prepare Discord message with summary, index, and statistics
         discord_message = f"**{pdf_title} - {date_range}**\n\n"
+        
+        discord_message += "**Storyteller Summary:**\n"
+        discord_message += executive_summary + "\n"
+
+        discord_message += message_index + "\n"
+
         discord_message += "**Message Statistics:**\n"
         for stat in message_stats:
             discord_message += f"• {stat}\n"
-        discord_message += "\n**Storyteller Summary:**\n"
         
-        # Truncate summary for Discord if too long
-        if len(executive_summary) > 1200:
-            discord_message += executive_summary[:1200] + "...\n\n*(Full summary available in attached PDF)*"
-        else:
-            discord_message += executive_summary
+        # Use smart chunking
+        chunks = smart_chunk_message(discord_message, 1950)
 
         with open(pdf_path, "rb") as f:
             pdf_file = discord.File(f, filename=os.path.basename(pdf_path))
-            await channel.send(content=discord_message, file=pdf_file)
+            
+            # Send chunks
+            for i, chunk in enumerate(chunks):
+                if i == len(chunks) - 1:
+                    # Last chunk gets the file
+                    await channel.send(content=chunk, file=pdf_file)
+                else:
+                    await channel.send(content=chunk)
+                    await asyncio.sleep(0.5)
+
         logger.info(f"Successfully sent PDF digest to channel {channel.name}.")
         # Mark messages as sent ONLY after successful sending
         await summary_module.mark_messages_as_sent(message_ids_to_mark_sent)
@@ -447,7 +593,7 @@ def setup_bot():
     intents.guilds = True
 
     command_classes = {}
-    module_names_to_load = ["hello", "throw", "huh", "summary", "digest", "pdf_generator", "larpbot_status"]
+    module_names_to_load = ["hello", "throw", "huh", "summary", "digest", "pdf_generator", "larpbot_status", "channel_summarize", "digest_now"]
     logger.info(f"Attempting to load command modules: {module_names_to_load}")
     for module_name_str in module_names_to_load:
         full_module_path = f"modules.{module_name_str}"
@@ -513,6 +659,14 @@ def setup_bot():
         logger.critical(f"Failed to initialize Firestore client: {e}", exc_info=True)
         firestore_client = None
 
+    # Initialize LoreManager
+    lore_manager = None
+    if firestore_client:
+        lore_manager = LoreManager(firestore_client)
+        # Prefetch cache in background? Or let it lazy load.
+        # Lazy load is fine, but let's log it.
+        logger.info("LoreManager initialized.")
+
 
     command_map_instances = {}
     summary_module_instance = None
@@ -529,7 +683,19 @@ def setup_bot():
                     logger.error("Firestore client not available, cannot instantiate Summary module.")
                 continue # This is not a command, so don't add to map
             elif name == "digest":
-                instance = Cls(summary_module=summary_module_instance, gemini_model=gemini_model, pdf_gen=pdf_generator)
+                # Updated to pass lore_manager
+                instance = Cls(summary_module=summary_module_instance, gemini_model=gemini_model, pdf_gen=pdf_generator, lore_manager=lore_manager)
+            elif name == "channel_summarize":
+                # Updated to pass lore_manager
+                instance = Cls(gemini_model=gemini_model, firestore_client=firestore_client, lore_manager=lore_manager)
+            elif name == "digest_now":
+                # Special handling for digest-now which needs the send callback
+                instance = Cls(
+                    send_digest_callback=send_digest_pdf,
+                    summary_module=summary_module_instance,
+                    gemini_model=gemini_model,
+                    lore_manager=lore_manager
+                )
             elif name == "larpbot_status":
                 status_command_instance = Cls(db_path=app_db_path, gemini_model=gemini_model)
                 instance = status_command_instance
@@ -564,14 +730,15 @@ def setup_bot():
     
     # Schedule jobs
     if summary_module_instance:
-        cron_schedule = os.environ.get("LOTSLARP_DISCORD_BOT_DIGEST_CRON", "0 8 * * *") # Default to 8:00 AM UTC daily
+        # Cron schedule for checking digest thresholds (default hourly)
+        cron_schedule = os.environ.get("LOTSLARP_DISCORD_BOT_DIGEST_CRON", "0 * * * *") 
         try:
             trigger = CronTrigger.from_crontab(cron_schedule, timezone="UTC")
-            scheduler.add_job(send_digest_pdf, trigger=trigger, args=[client, summary_module_instance, gemini_model])
-            logger.info(f"Scheduled daily digest with cron schedule: '{cron_schedule}' UTC")
+            scheduler.add_job(send_digest_pdf, trigger=trigger, args=[client, summary_module_instance, gemini_model, lore_manager])
+            logger.info(f"Scheduled digest check with cron schedule: '{cron_schedule}' UTC")
         except ValueError as e:
-            logger.error(f"Invalid cron string '{cron_schedule}'. Defaulting to every day at 8am. Error: {e}")
-            scheduler.add_job(send_digest_pdf, 'cron', hour=8, args=[client, summary_module_instance, gemini_model])
+            logger.error(f"Invalid cron string '{cron_schedule}'. Defaulting to every hour. Error: {e}")
+            scheduler.add_job(send_digest_pdf, 'interval', minutes=60, args=[client, summary_module_instance, gemini_model, lore_manager])
 
         scheduler.add_job(summary_module_instance.delete_old_messages, 'cron', hour=0)
 
@@ -586,7 +753,9 @@ def setup_bot():
 async def main():
     logger.info("Application entry point reached.")
     
-    # Memory profiling disabled to keep logs clean
+    # Start tracemalloc for memory profiling
+    tracemalloc.start()
+    logger.info("Tracemalloc started.")
     
     # Run the health check server in a separate thread
     health_server_thread = threading.Thread(target=run_health_server, daemon=True)

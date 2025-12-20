@@ -79,14 +79,16 @@ class Summary:
         messages = []
         for doc in docs:
             data = doc.to_dict()
-            # The original code used the DB's autoincrement ID. Here, we use the Firestore document ID (which is the message_id string)
             messages.append([
                 data.get('channel_id'),
                 data.get('guild_id'),
                 data.get('author_name'),
                 data.get('message_content'),
                 data.get('message_url'),
-                doc.id  # Use the document ID (string)
+                doc.id,
+                data.get('author_display_name'),
+                data.get('channel_name'),
+                data.get('timestamp')
             ])
         return messages
 
@@ -107,7 +109,9 @@ class Summary:
                 data.get('author_name'),
                 data.get('message_content'),
                 data.get('message_url'),
-                doc.id
+                doc.id,
+                data.get('author_display_name'),
+                data.get('channel_name')
             ])
         return messages
 
@@ -162,17 +166,24 @@ class Summary:
         logging.info(f"Cleared {deleted_count} messages from Firestore.")
 
     async def delete_old_messages(self):
-        """Deletes messages older than six weeks."""
+        """Deletes messages and summaries older than six weeks."""
         await asyncio.to_thread(self._delete_old_messages_sync)
 
     def _delete_old_messages_sync(self):
         six_weeks_ago = datetime.datetime.utcnow() - datetime.timedelta(weeks=6)
-        logging.info(f"Deleting messages older than {six_weeks_ago}...")
         
-        query = self.collection_ref.where(filter=FieldFilter('timestamp', '<', six_weeks_ago))
-        deleted_count = self._delete_collection_in_batches(query, 100)
+        # 1. Clean up summary_messages
+        logging.info(f"Deleting messages older than {six_weeks_ago} from summary_messages...")
+        query_messages = self.collection_ref.where(filter=FieldFilter('timestamp', '<', six_weeks_ago))
+        deleted_messages = self._delete_collection_in_batches(query_messages, 100)
         
-        if deleted_count > 0:
-            logging.info(f"Deleted {deleted_count} old messages from Firestore.")
+        # 2. Clean up channel_summaries
+        logging.info(f"Deleting summaries older than {six_weeks_ago} from channel_summaries...")
+        summaries_ref = self.db.collection('channel_summaries')
+        query_summaries = summaries_ref.where(filter=FieldFilter('created_at', '<', six_weeks_ago))
+        deleted_summaries = self._delete_collection_in_batches(query_summaries, 100)
+        
+        if deleted_messages > 0 or deleted_summaries > 0:
+            logging.info(f"Cleanup complete. Deleted {deleted_messages} messages and {deleted_summaries} summaries.")
         else:
-            logging.info("No old messages found to delete.")
+            logging.info("No old data found to delete.")

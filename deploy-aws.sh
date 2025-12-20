@@ -52,13 +52,6 @@ if [ ! -f .env.aws ]; then
     exit 1
 fi
 
-read -p "Do you want to continue? (y/n) " -n 1 -r
-echo ""
-if [[ ! $REPLY =~ ^[Yy]$ ]]
-then
-    exit 1
-fi
-
 # Get AWS Account ID
 AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query "Account" --output text)
 echo "Using AWS Account ID: $AWS_ACCOUNT_ID"

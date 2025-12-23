@@ -174,6 +174,32 @@ else
     echo "Single field index may already exist (this is okay)."
 fi
 
+# Create composite index for voice_logs (channel_name, joined_at)
+echo "Creating composite index for voice_logs (channel_name, joined_at)..."
+if gcloud firestore indexes composite create \
+    --project="$GCP_PROJECT_ID" \
+    --collection-group="voice_logs" \
+    --field-config="field-path=channel_name,order=ascending" \
+    --field-config="field-path=joined_at,order=ascending" \
+    --quiet 2>/dev/null; then
+    echo "Successfully created composite index for voice_logs."
+else
+    echo "Voice logs composite index may already exist (this is okay)."
+fi
+
+# Create composite index for voice_status_logs (channel_name, timestamp)
+echo "Creating composite index for voice_status_logs (channel_name, timestamp)..."
+if gcloud firestore indexes composite create \
+    --project="$GCP_PROJECT_ID" \
+    --collection-group="voice_status_logs" \
+    --field-config="field-path=channel_name,order=ascending" \
+    --field-config="field-path=timestamp,order=ascending" \
+    --quiet 2>/dev/null; then
+    echo "Successfully created composite index for voice_status_logs."
+else
+    echo "Voice status logs composite index may already exist (this is okay)."
+fi
+
 if [ ! -f .env ]; then
     echo ".env file not found. Please copy .env.example to .env and fill in your secrets."
     exit 1

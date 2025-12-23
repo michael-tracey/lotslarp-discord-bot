@@ -19,6 +19,10 @@ class Summary:
         await asyncio.to_thread(self._cache_message_sync, message)
 
     def _cache_message_sync(self, message: discord.Message):
+        if message.author.bot:
+            logging.info(f"Skipping caching for bot message {message.id} from {message.author.name}")
+            return
+
         doc_ref = self.collection_ref.document(str(message.id))
 
         # Start with original content

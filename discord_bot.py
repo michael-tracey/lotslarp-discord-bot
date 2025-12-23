@@ -17,6 +17,7 @@ from google.cloud import firestore  # Add Firestore import
 from modules import pdf_generator
 from modules.utils import smart_chunk_message
 from modules.channel_summarize import handle_share_interaction
+from modules.summary_reminder import handle_remind_interaction
 from modules.lore import LoreManager
 
 # --- Health Monitoring ---
@@ -212,10 +213,11 @@ def get_app_db_path():
 
 
 class MyClient(discord.Client):
-    def __init__(self, command_map, summary_module, scheduler, status_command, *args, **kwargs):
+    def __init__(self, command_map, summary_module, scheduler, status_command, voice_module=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.command_map = command_map
         self.summary_module = summary_module
+        self.voice_module = voice_module
         self.scheduler = scheduler
         self.status_command = status_command
         self.summary_role_name = os.environ.get("LOTSLARP_DISCORD_BOT_SUMMARY_ROLE_NAME")
@@ -227,6 +229,13 @@ class MyClient(discord.Client):
             logger.error(f"Invalid DIGEST_CHANNEL_ID value: '{os.environ.get('LOTSLARP_DISCORD_BOT_DIGEST_CHANNEL_ID')}'. Using 0 as default. Error: {e}")
             self.digest_channel_id = 0
         logger.info("MyClient initialized.")
+
+    async def on_voice_state_update(self, member, before, after):
+        logger.debug(f"Event: on_voice_state_update for {member.display_name}")
+        if self.voice_module:
+            await self.voice_module.on_voice_state_update(member, before, after)
+        else:
+            logger.warning("Voice module not loaded, ignoring voice state update.")
 
     async def on_ready(self):
         # Set Discord logging levels after client is ready
@@ -341,6 +350,8 @@ class MyClient(discord.Client):
                     await handle_share_interaction(interaction, firestore_client)
                 else:
                     await interaction.response.send_message("❌ Database connection unavailable.", ephemeral=True)
+            elif custom_id.startswith('remind_summary:'):
+                await handle_remind_interaction(interaction)
 
 
 async def send_digest_pdf(client: discord.Client, summary_module, gemini_model, lore_manager=None, force=False):
@@ -583,6 +594,16 @@ async def send_digest_pdf(client: discord.Client, summary_module, gemini_model, 
             logger.info(f"Removed temporary PDF file: {pdf_path}")
 
 
+async def run_stale_channels_job(client: discord.Client, summary_reminder_instance):
+    """Job to run the automated stale channels scan."""
+    output_channel = client.get_channel(summary_reminder_instance.output_channel_id)
+    if output_channel:
+        logger.info("Running scheduled stale channels scan...")
+        await summary_reminder_instance.execute_auto_scan(client, output_channel)
+    else:
+        logger.error(f"Cannot run stale channels job: Output channel {summary_reminder_instance.output_channel_id} not found.")
+
+
 def setup_bot():
     logger.info("Starting Discord bot core logic setup...")
     app_db_path = get_app_db_path()
@@ -593,7 +614,7 @@ def setup_bot():
     intents.guilds = True
 
     command_classes = {}
-    module_names_to_load = ["hello", "throw", "huh", "summary", "digest", "pdf_generator", "larpbot_status", "channel_summarize", "digest_now"]
+    module_names_to_load = ["hello", "throw", "huh", "summary", "digest", "pdf_generator", "larpbot_status", "channel_summarize", "digest_now", "voice", "summary_reminder", "help"]
     logger.info(f"Attempting to load command modules: {module_names_to_load}")
     for module_name_str in module_names_to_load:
         full_module_path = f"modules.{module_name_str}"
@@ -670,7 +691,9 @@ def setup_bot():
 
     command_map_instances = {}
     summary_module_instance = None
+    voice_module_instance = None
     status_command_instance = None
+    summary_reminder_instance = None # To hold the instance for scheduling
     for name, Cls in command_classes.items():
         try:
             instance = None
@@ -682,6 +705,13 @@ def setup_bot():
                 else:
                     logger.error("Firestore client not available, cannot instantiate Summary module.")
                 continue # This is not a command, so don't add to map
+            elif name == "voice":
+                if firestore_client:
+                    voice_module_instance = Cls(firestore_client=firestore_client)
+                    instance = voice_module_instance # It is also a command (/voice-report)
+                else:
+                    logger.error("Firestore client not available, cannot instantiate Voice module.")
+                    continue
             elif name == "digest":
                 # Updated to pass lore_manager
                 instance = Cls(summary_module=summary_module_instance, gemini_model=gemini_model, pdf_gen=pdf_generator, lore_manager=lore_manager)
@@ -701,6 +731,9 @@ def setup_bot():
                 instance = status_command_instance
             elif name == "pdf_generator":
                 continue # Not a command
+            elif name == "summary_reminder":
+                instance = Cls()
+                summary_reminder_instance = instance # Capture instance
             else:
                 instance = Cls() 
 
@@ -722,7 +755,8 @@ def setup_bot():
     scheduler = AsyncIOScheduler()
     client = MyClient(
         command_map=command_map_instances, 
-        summary_module=summary_module_instance, 
+        summary_module=summary_module_instance,
+        voice_module=voice_module_instance, 
         scheduler=scheduler,
         status_command=status_command_instance,
         intents=intents
@@ -741,6 +775,23 @@ def setup_bot():
             scheduler.add_job(send_digest_pdf, 'interval', minutes=60, args=[client, summary_module_instance, gemini_model, lore_manager])
 
         scheduler.add_job(summary_module_instance.delete_old_messages, 'cron', hour=0)
+    
+    if voice_module_instance:
+        scheduler.add_job(voice_module_instance.cleanup_old_logs, 'cron', hour=0)
+        logger.info("Scheduled voice log cleanup for daily at 00:00.")
+        
+    # Schedule Stale Channels Scan
+    if summary_reminder_instance:
+        stale_cron = os.environ.get("LOTSLARP_BOT_STALE_CHANNELS_CRON")
+        if stale_cron:
+            try:
+                trigger = CronTrigger.from_crontab(stale_cron, timezone="UTC")
+                scheduler.add_job(run_stale_channels_job, trigger=trigger, args=[client, summary_reminder_instance])
+                logger.info(f"Scheduled stale channels scan with cron schedule: '{stale_cron}' UTC")
+            except ValueError as e:
+                logger.error(f"Invalid stale channels cron string '{stale_cron}'. Job not scheduled. Error: {e}")
+        else:
+            logger.info("No cron schedule set for stale channels (LOTSLARP_BOT_STALE_CHANNELS_CRON). Skipping.")
 
     # Schedule health monitoring and keepalive jobs
     scheduler.add_job(periodic_health_check, 'interval', minutes=30)  # Health check every 30 minutes

@@ -90,6 +90,7 @@ class ChannelSummarize:
         self.lore_manager = lore_manager
         self.name = "summarize"
         self.summary_role_name = os.environ.get("LOTSLARP_DISCORD_BOT_SUMMARY_ROLE_NAME")
+        self.admin_role_name = os.environ.get("LOTSLARP_BOT_ADMIN_USER", "@storytellers").strip("@")
         
         # Get the summary output channel ID
         try:
@@ -104,6 +105,18 @@ class ChannelSummarize:
         Summarizes messages from a specified channel.
         Usage: /summarize <channel_id>
         """
+        # Check Permissions
+        has_permission = False
+        if isinstance(message.author, discord.Member):
+            for role in message.author.roles:
+                if role.name == self.admin_role_name:
+                    has_permission = True
+                    break
+        
+        if not has_permission:
+            await message.channel.send("🚫 You do not have permission to run this command.")
+            return
+
         parts = message.content.split()
         
         if len(parts) != 2:

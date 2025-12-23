@@ -1,3 +1,4 @@
+import os
 import discord
 import logging
 
@@ -10,12 +11,25 @@ class DigestNow:
         self.gemini_model = gemini_model
         self.lore_manager = lore_manager
         self.name = "digest-now"
+        self.admin_role_name = os.environ.get("LOTSLARP_BOT_ADMIN_USER", "@storytellers").strip("@")
 
     async def run(self, client: discord.Client, message: discord.Message):
         """
         Forces an immediate digest send, bypassing thresholds.
         Usage: /digest-now
         """
+        # Check Permissions
+        has_permission = False
+        if isinstance(message.author, discord.Member):
+            for role in message.author.roles:
+                if role.name == self.admin_role_name:
+                    has_permission = True
+                    break
+        
+        if not has_permission:
+            await message.channel.send("🚫 You do not have permission to run this command.")
+            return
+
         await message.channel.send("🔄 Triggering immediate digest...", delete_after=10)
         
         try:

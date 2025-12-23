@@ -12,8 +12,21 @@ class Digest:
         self.pdf_generator = pdf_gen
         self.lore_manager = lore_manager
         self.name = "digest"
+        self.admin_role_name = os.environ.get("LOTSLARP_BOT_ADMIN_USER", "@storytellers").strip("@")
 
     async def run(self, client: discord.Client, message: discord.Message):
+        # Check Permissions
+        has_permission = False
+        if isinstance(message.author, discord.Member):
+            for role in message.author.roles:
+                if role.name == self.admin_role_name:
+                    has_permission = True
+                    break
+        
+        if not has_permission:
+            await message.channel.send("🚫 You do not have permission to run this command.")
+            return
+
         parts = message.content.split()
         if len(parts) != 2 or parts[1].lower() not in ["day", "week", "month"]:
             await message.channel.send("Usage: /digest <day|week|month>")

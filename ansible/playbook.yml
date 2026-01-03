@@ -1,0 +1,95 @@
+---
+- name: Configure Discord Bot VM
+  hosts: all
+  become: yes
+  vars:
+    # Passed via --extra-vars
+    # docker_image: "..."
+    # env_file_src: "..."
+    app_dir: "/opt/lotslarp-bot"
+
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Upgrade all packages
+      apt:
+        upgrade: dist
+        force_apt_get: yes
+
+    - name: Install dependencies
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+          - python3-pip
+          - python3-docker
+        state: present
+
+    # Docker installation simplified to use Ubuntu's native package
+    # This avoids 404 errors with external Docker repositories
+    - name: Install Docker
+      apt:
+        name: docker.io
+        state: present
+        update_cache: yes
+
+    - name: Ensure Docker service is running
+      service:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Create app directory
+      file:
+        path: "{{ app_dir }}"
+        state: directory
+        mode: '0755'
+
+    - name: Copy .env file
+      copy:
+        src: "{{ env_file_src }}"
+        dest: "{{ app_dir }}/.env"
+        mode: '0600'
+
+    - name: Get Access Token from GCE Metadata
+      # We use the VM's service account to authenticate with Artifact Registry
+      # Fixing the quoting issue: using single quotes for the YAML string, and double quotes for shell string
+      shell: 'curl -H "Metadata-Flavor: Google" "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token" | grep -o "\"access_token\":\"[^\"]*\"" | cut -d: -f2 | tr -d "\""'
+      register: gce_token
+      changed_when: false
+
+    - name: Log in to Google Artifact Registry
+      community.docker.docker_login:
+        registry: us-east1-docker.pkg.dev
+        username: oauth2accesstoken
+        password: "{{ gce_token.stdout }}"
+
+    - name: Pull Docker image
+      community.docker.docker_image:
+        name: "{{ docker_image }}"
+        source: pull
+
+    - name: Stop old container (if running)
+      community.docker.docker_container:
+        name: discord-bot
+        state: absent
+
+    - name: Run Discord Bot Container
+      community.docker.docker_container:
+        name: discord-bot
+        image: "{{ docker_image }}"
+        state: started
+        restart_policy: always
+        # We mount .env instead of using env_file so python-dotenv can parse multi-line strings correctly
+        volumes:
+          - "{{ app_dir }}/.env:/app/.env"
+        # Limits (optional, mirroring e2-micro constraints roughly)
+        memory: 800m
+        log_driver: "gcplogs"
+        log_options:
+          gcp-log-cmd: "true"

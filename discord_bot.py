@@ -7,6 +7,7 @@ import asyncio
 import importlib
 import tracemalloc
 import linecache
+import re
 
 from datetime import datetime
 from dotenv import load_dotenv
@@ -19,6 +20,7 @@ from modules.utils import smart_chunk_message
 from modules.channel_summarize import handle_share_interaction
 from modules.summary_reminder import handle_remind_interaction
 from modules.lore import LoreManager
+from modules.monthly_summary import check_monthly_trigger
 
 # --- Health Monitoring ---
 def periodic_health_check():
@@ -228,6 +230,29 @@ class MyClient(discord.Client):
         except (ValueError, TypeError) as e:
             logger.error(f"Invalid DIGEST_CHANNEL_ID value: '{os.environ.get('LOTSLARP_DISCORD_BOT_DIGEST_CHANNEL_ID')}'. Using 0 as default. Error: {e}")
             self.digest_channel_id = 0
+            
+        # New User Setup Configuration
+        try:
+            cat_id_str = os.environ.get("LOTSLARP_BOT_CREATE_NEW_USER_CATEGORY", "")
+            self.new_user_category_id = int(cat_id_str.strip()) if cat_id_str.strip() else None
+        except ValueError:
+            logger.error(f"Invalid LOTSLARP_BOT_CREATE_NEW_USER_CATEGORY: {cat_id_str}")
+            self.new_user_category_id = None
+            
+        self.new_user_message_template = os.environ.get("LOTSLARP_BOT_NEW_USER_MESSAGE_TEMPLATE", 
+            "Welcome {user_mention}! :wave:\n\n"
+            "This is your **personal channel** with the Storytellers. Use this space to:\n"
+            "• Discuss character concepts\n"
+            "• Ask rule questions\n"
+            "• Chat privately with staff\n\n"
+            "We'll rename this channel to your character's name once you're approved!\n\n"
+            "(You can also email us at storytellers@lotslarp.org, but this channel is usually faster.)"
+        )
+        
+        # Additional roles to add to the new user channel
+        additional_roles_str = os.environ.get("LOTSLARP_BOT_NEW_USER_CHANNEL_ADDITIONAL_ROLES", "Tupperbox,Carl-bot")
+        self.new_user_additional_roles = [r.strip() for r in additional_roles_str.split(",") if r.strip()]
+
         logger.info("MyClient initialized.")
 
     async def on_voice_state_update(self, member, before, after):
@@ -236,6 +261,95 @@ class MyClient(discord.Client):
             await self.voice_module.on_voice_state_update(member, before, after)
         else:
             logger.warning("Voice module not loaded, ignoring voice state update.")
+
+    async def create_intro_channel(self, member):
+        """Helper to create the intro channel for a member."""
+        if not self.new_user_category_id:
+            return
+
+        logger.info(f"Processing channel creation for member {member.name}...")
+        guild = member.guild
+        category = guild.get_channel(self.new_user_category_id)
+        
+        if not category or not isinstance(category, discord.CategoryChannel):
+            logger.error(f"Target category ID {self.new_user_category_id} not found or is not a category.")
+            return
+
+        # Sanitize channel name
+        # 1. Lowercase
+        # 2. Spaces to hyphens
+        # 3. Remove illegal chars (keep a-z, 0-9, -, _)
+        # 4. Collapse multiple hyphens
+        channel_name = member.name.lower().replace(" ", "-")
+        channel_name = re.sub(r"[^a-z0-9\-_]", "", channel_name)
+        channel_name = re.sub(r"-+", "-", channel_name).strip("-")
+        
+        # Fallback if name becomes empty
+        if not channel_name:
+            channel_name = f"user-{member.id}"
+
+        # Create channel
+        try:
+            # Check if channel already exists in category
+            existing_channel = discord.utils.get(category.text_channels, name=channel_name)
+            if existing_channel:
+                logger.info(f"Channel {channel_name} already exists. Skipping creation.")
+                new_channel = existing_channel
+            else:
+                overwrites = {
+                    guild.default_role: discord.PermissionOverwrite(read_messages=False),
+                    member: discord.PermissionOverwrite(read_messages=True),
+                    guild.me: discord.PermissionOverwrite(read_messages=True)
+                }
+                
+                # Add additional roles
+                for role_name in self.new_user_additional_roles:
+                    role = discord.utils.get(guild.roles, name=role_name)
+                    if role:
+                        overwrites[role] = discord.PermissionOverwrite(read_messages=True)
+                    else:
+                        logger.warning(f"Role '{role_name}' not found in guild, skipping for channel creation.")
+
+                new_channel = await guild.create_text_channel(
+                    name=channel_name,
+                    category=category,
+                    overwrites=overwrites,
+                    reason=f"Setup channel for member {member.name}"
+                )
+                logger.info(f"Created channel {new_channel.name} (ID: {new_channel.id})")
+
+                # Send First Message
+                if self.new_user_message_template:
+                    msg_content = self.new_user_message_template.replace('\\n', '\n').format(
+                        user_mention=member.mention,
+                        user_name=member.name,
+                        channel_mention=new_channel.mention,
+                        guild_name=guild.name
+                    )
+                    await new_channel.send(msg_content)
+                    
+        except Exception as e:
+            logger.error(f"Failed to setup new user channel for {member.name}: {e}", exc_info=True)
+
+    async def on_member_join(self, member):
+        """
+        Triggered when a member joins the guild.
+        """
+        logger.info(f"Member {member.name} joined guild {member.guild.name}. Checking for channel creation...")
+        await self.create_intro_channel(member)
+
+    async def on_member_update(self, before, after):
+        """
+        Monitor member updates to detect when a member completes screening (Apply to Join).
+        Transition: before.pending=True -> after.pending=False
+        """
+        if not self.new_user_category_id:
+            return
+
+        # Check if the member transitioned from pending=True to pending=False
+        if before.pending and not after.pending:
+            logger.info(f"Member {after.name} completed screening! Ensuring channel exists...")
+            await self.create_intro_channel(after)
 
     async def on_ready(self):
         # Set Discord logging levels after client is ready
@@ -614,7 +728,7 @@ def setup_bot():
     intents.guilds = True
 
     command_classes = {}
-    module_names_to_load = ["hello", "throw", "huh", "summary", "digest", "pdf_generator", "larpbot_status", "channel_summarize", "digest_now", "voice", "summary_reminder", "help"]
+    module_names_to_load = ["hello", "throw", "huh", "summary", "digest", "pdf_generator", "larpbot_status", "channel_summarize", "digest_now", "voice", "summary_reminder", "help", "monthly_summary"]
     logger.info(f"Attempting to load command modules: {module_names_to_load}")
     for module_name_str in module_names_to_load:
         full_module_path = f"modules.{module_name_str}"
@@ -734,6 +848,8 @@ def setup_bot():
             elif name == "summary_reminder":
                 instance = Cls()
                 summary_reminder_instance = instance # Capture instance
+            elif name == "monthly_summary":
+                instance = Cls(summary_module=summary_module_instance, gemini_model=gemini_model, pdf_gen=pdf_generator, lore_manager=lore_manager)
             else:
                 instance = Cls() 
 
@@ -775,6 +891,10 @@ def setup_bot():
             scheduler.add_job(send_digest_pdf, 'interval', minutes=60, args=[client, summary_module_instance, gemini_model, lore_manager])
 
         scheduler.add_job(summary_module_instance.delete_old_messages, 'cron', hour=0)
+
+        # Schedule Monthly Summary Check (Daily at 14:00 UTC)
+        scheduler.add_job(check_monthly_trigger, 'cron', hour=14, args=[client, summary_module_instance, gemini_model, pdf_generator, lore_manager])
+        logger.info("Scheduled monthly summary trigger check for daily at 14:00 UTC.")
     
     if voice_module_instance:
         scheduler.add_job(voice_module_instance.cleanup_old_logs, 'cron', hour=0)

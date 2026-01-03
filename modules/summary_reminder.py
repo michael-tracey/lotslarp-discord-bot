@@ -86,10 +86,6 @@ class SummaryReminder:
             self.default_throttle_count = int(os.environ.get("LOTSLARP_BOT_SUMMARY_THROTTLE_CHANNEL_COUNT", 25))
             self.min_words = int(os.environ.get("LOTSLARP_BOT_SUMMARY_REMINDER_MIN_WORDS", 5))
             
-            # Archival settings
-            self.archive_reminder_inactivity = int(os.environ.get("LOTSLARP_BOT_ARCHIVE_REMINDER_INACTIVITY_DAYS", 14))
-            self.archive_inactivity = int(os.environ.get("LOTSLARP_BOT_ARCHIVE_INACTIVITY_DAYS", 180))
-            
             output_channel_str = os.environ.get("LOTSLARP_BOT_SUMMARY_CHANNEL_ID", "0")
             self.output_channel_id = int(output_channel_str.strip().strip("'").strip("'"))
         except ValueError as e:
@@ -99,8 +95,6 @@ class SummaryReminder:
             self.activity_days = 5
             self.default_throttle_count = 25
             self.min_words = 5
-            self.archive_reminder_inactivity = 14
-            self.archive_inactivity = 180
             self.output_channel_id = 0
             
         self.summary_role_name = os.environ.get("LOTSLARP_DISCORD_BOT_SUMMARY_ROLE_NAME")
@@ -179,19 +173,16 @@ class SummaryReminder:
 
     async def _scan_channels(self, client, throttle_count):
         """
-        Core scanning logic. Returns (stale_channels, archive_candidates).
+        Core scanning logic. Returns stale_channels.
         """
-        category_regex = re.compile(r"^chat-.*$", re.IGNORECASE)
+        category_regex = re.compile(r"^(chat-.*|Coteries-and-groups)$", re.IGNORECASE)
         ooc_regex = re.compile(r"^\s*\(\(")
         
         stale_channels = []
-        archive_candidates = []
         
         now = discord.utils.utcnow()
         cutoff_date = now - timedelta(days=self.lookback_days)
         activity_cutoff = now - timedelta(days=self.activity_days)
-        archive_cutoff = now - timedelta(days=self.archive_inactivity)
-        archive_reminder_cutoff = now - timedelta(days=self.archive_reminder_inactivity)
         
         # Iterate Guilds
         for guild in client.guilds:
@@ -227,26 +218,11 @@ class SummaryReminder:
                         if not last_message:
                             continue 
                         
-                        # --- Archive Candidate Check 1: Long Inactivity ---
-                        if last_message.created_at < archive_cutoff:
-                            archive_candidates.append({
-                                'channel': channel,
-                                'reason': f"No activity for > {self.archive_inactivity} days."
-                            })
-                            continue 
-                        
                         # Check if last message is a bot reminder
                         last_was_reminder = (last_message.author.id == client.user.id and 
                                            "Lotslarp bot has noticed" in last_message.content)
 
                         if last_was_reminder:
-                            # --- Archive Candidate Check 2 ---
-                            if last_message.created_at < archive_reminder_cutoff:
-                                archive_candidates.append({
-                                    'channel': channel,
-                                    'reason': f"Reminder sent > {self.archive_reminder_inactivity} days ago with no reply."
-                                })
-                            
                             # Skip if already reminded (one message is enough)
                             continue
                         
@@ -286,13 +262,13 @@ class SummaryReminder:
                         logger.error(f"Error scanning channel {channel.name}: {e}")
                         continue
                         
-        return stale_channels, archive_candidates
+        return stale_channels
 
     async def execute_manual_scan(self, client, command_channel, output_channel, throttle_count):
         """
         Original logic: Sends buttons to output channel.
         """
-        stale_channels, archive_candidates = await self._scan_channels(client, throttle_count)
+        stale_channels = await self._scan_channels(client, throttle_count)
         
         if stale_channels:
             for item in stale_channels:
@@ -319,13 +295,6 @@ class SummaryReminder:
             f"{status_msg}\n"
             f"Found {len(stale_channels)} stale channels."
         )
-        
-        if archive_candidates:
-            final_report += f"\n\n**🗑️ Archive Candidates ({len(archive_candidates)})**\n"
-            for item in archive_candidates[:20]:
-                final_report += f"• {item['channel'].mention}: {item['reason']}\n"
-            if len(archive_candidates) > 20:
-                final_report += f"...and {len(archive_candidates) - 20} more."
 
         # Send to command channel
         if len(final_report) > 1950:
@@ -346,7 +315,7 @@ class SummaryReminder:
 
         logger.info(f"Starting automated stale channel scan (Limit: {throttle_count})")
         
-        stale_channels, archive_candidates = await self._scan_channels(client, throttle_count)
+        stale_channels = await self._scan_channels(client, throttle_count)
         
         reminded_channels = []
         
@@ -384,13 +353,6 @@ class SummaryReminder:
                 report_lines.append(f"• {ch.mention} (Count: {count_val})")
         else:
             report_lines.append("\n✅ No reminders needed.")
-            
-        if archive_candidates:
-            report_lines.append(f"\n**🗑️ Archive Candidates ({len(archive_candidates)})**")
-            for item in archive_candidates[:20]:
-                report_lines.append(f"• {item['channel'].mention}: {item['reason']}")
-            if len(archive_candidates) > 20:
-                report_lines.append(f"...and {len(archive_candidates) - 20} more.")
 
         full_report = "\n".join(report_lines)
         

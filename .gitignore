@@ -4,3 +4,7 @@ __pycache__/
 .env
 .env.aws
 .env.google
+.terraform/
+*.tfstate
+*.tfstate.backup
+.terraform.lock.hcl

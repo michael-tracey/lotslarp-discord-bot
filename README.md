@@ -34,3 +34,36 @@ To run the bot locally with Firestore integration, you need to authenticate your
     ```bash
     gcloud config set project YOUR_PROJECT_ID
     ```
+
+## Deployment to Google Compute Engine (GCE)
+
+To save on costs compared to Cloud Run, this bot can be deployed to a `e2-micro` VM instance on Google Compute Engine (often free tier eligible).
+
+### Prerequisites
+
+1.  **Install Tools:** Ensure you have the following installed on your local machine:
+    *   `tofu` (OpenTofu) or `terraform`
+    *   `ansible`
+    *   `gcloud` CLI
+
+2.  **Create .env File:**
+    You **must** create a `.env` file in the root directory of this project before deploying. This file contains your secrets and configuration.
+    
+    Copy the example:
+    ```bash
+    cp .env.example .env
+    ```
+    Then edit `.env` and fill in your values (Discord Token, Gemini API Key, etc.).
+
+### Deploying
+
+Run the deployment script:
+
+```bash
+./deploy-gce.sh
+```
+
+This script will:
+1.  Build and push the Docker image to Google Artifact Registry.
+2.  Provision the VM and networking using OpenTofu/Terraform.
+3.  Configure the VM and start the bot container using Ansible.

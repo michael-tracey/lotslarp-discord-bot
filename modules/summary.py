@@ -119,6 +119,35 @@ class Summary:
             ])
         return messages
 
+    async def get_messages_in_range(self, start_date, end_date):
+        """Fetches all messages within a specific date range, regardless of sent status."""
+        return await asyncio.to_thread(self._get_messages_in_range_sync, start_date, end_date)
+
+    def _get_messages_in_range_sync(self, start_date, end_date):
+        # Query for messages where timestamp >= start_date AND timestamp <= end_date
+        # Note: Firestore requires a composite index for this if mixed with other filters, 
+        # but here we are filtering on the same field 'timestamp', so it should be fine.
+        query = self.collection_ref.where(filter=FieldFilter('timestamp', '>=', start_date))\
+                                   .where(filter=FieldFilter('timestamp', '<=', end_date))\
+                                   .order_by('timestamp')
+        docs = query.stream()
+        
+        messages = []
+        for doc in docs:
+            data = doc.to_dict()
+            messages.append([
+                data.get('channel_id'),
+                data.get('guild_id'),
+                data.get('author_name'),
+                data.get('message_content'),
+                data.get('message_url'),
+                doc.id,
+                data.get('author_display_name'),
+                data.get('channel_name'),
+                data.get('timestamp')
+            ])
+        return messages
+
     async def mark_messages_as_sent(self, message_ids):
         """Marks a list of messages as sent by setting their sent_date in a batch."""
         if not message_ids:
@@ -170,21 +199,22 @@ class Summary:
         logging.info(f"Cleared {deleted_count} messages from Firestore.")
 
     async def delete_old_messages(self):
-        """Deletes messages and summaries older than six weeks."""
+        """Deletes messages and summaries older than twelve weeks."""
         await asyncio.to_thread(self._delete_old_messages_sync)
 
     def _delete_old_messages_sync(self):
-        six_weeks_ago = datetime.datetime.utcnow() - datetime.timedelta(weeks=6)
+        # Increased to 12 weeks to support monthly summaries (looking back to previous month)
+        cutoff_date = datetime.datetime.utcnow() - datetime.timedelta(weeks=12)
         
         # 1. Clean up summary_messages
-        logging.info(f"Deleting messages older than {six_weeks_ago} from summary_messages...")
-        query_messages = self.collection_ref.where(filter=FieldFilter('timestamp', '<', six_weeks_ago))
+        logging.info(f"Deleting messages older than {cutoff_date} from summary_messages...")
+        query_messages = self.collection_ref.where(filter=FieldFilter('timestamp', '<', cutoff_date))
         deleted_messages = self._delete_collection_in_batches(query_messages, 100)
         
         # 2. Clean up channel_summaries
-        logging.info(f"Deleting summaries older than {six_weeks_ago} from channel_summaries...")
+        logging.info(f"Deleting summaries older than {cutoff_date} from channel_summaries...")
         summaries_ref = self.db.collection('channel_summaries')
-        query_summaries = summaries_ref.where(filter=FieldFilter('created_at', '<', six_weeks_ago))
+        query_summaries = summaries_ref.where(filter=FieldFilter('created_at', '<', cutoff_date))
         deleted_summaries = self._delete_collection_in_batches(query_summaries, 100)
         
         if deleted_messages > 0 or deleted_summaries > 0:

@@ -29,4 +29,4 @@ substitutions:
   _ARTIFACT_REGISTRY_REPO: 'discord-bots'
 
 options:
-  logging: CLOUD_LOGGING_ONLY
+  machineType: 'E2_HIGHCPU_8'

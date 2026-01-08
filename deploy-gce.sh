@@ -26,7 +26,7 @@ echo "--- Deploying to GCE ---"
 # 1. Build & Push Docker Image (reusing Cloud Build logic lightly or assuming it's done)
 # Ideally, we should build locally or trigger a build. For simplicity, let's trigger a build.
 echo "Triggering Cloud Build to ensure 'latest' image is up to date..."
-gcloud builds submit --region=$GCP_REGION --config=cloudbuild.yaml \
+gcloud beta builds submit --region=$GCP_REGION --config=cloudbuild.yaml \
     --substitutions=_SERVICE_NAME=$SERVICE_NAME,_REGION=$GCP_REGION,_ARTIFACT_REGISTRY_REPO=$ARTIFACT_REGISTRY_REPO \
     .
 

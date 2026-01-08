@@ -56,6 +56,12 @@
         dest: "{{ app_dir }}/.env"
         mode: '0600'
 
+    - name: Remove DCE_CLI_PATH from .env (use Dockerfile default)
+      lineinfile:
+        path: "{{ app_dir }}/.env"
+        regexp: '^DCE_CLI_PATH='
+        state: absent
+
     - name: Get Access Token from GCE Metadata
       # We use the VM's service account to authenticate with Artifact Registry
       # Fixing the quoting issue: using single quotes for the YAML string, and double quotes for shell string
@@ -73,6 +79,7 @@
       community.docker.docker_image:
         name: "{{ docker_image }}"
         source: pull
+        force_source: yes
 
     - name: Stop old container (if running)
       community.docker.docker_container:
@@ -85,6 +92,7 @@
         image: "{{ docker_image }}"
         state: started
         restart_policy: always
+        pull: yes
         # We mount .env instead of using env_file so python-dotenv can parse multi-line strings correctly
         volumes:
           - "{{ app_dir }}/.env:/app/.env"

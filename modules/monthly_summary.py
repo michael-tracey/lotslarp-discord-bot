@@ -3,7 +3,7 @@ import logging
 import discord
 import asyncio
 from datetime import datetime, timedelta, timezone
-from modules.utils import smart_chunk_message
+from modules.utils import smart_chunk_message, get_previous_game_date, get_date_of_weekday_in_month
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +25,8 @@ class MonthlySummary:
 
     async def run(self, client: discord.Client, message: discord.Message):
         """
-        Manually triggers a monthly summary for the last 30 days.
+        Manually triggers a monthly summary.
+        Logic: Summarizes from "Last Game" until Now.
         Usage: /summarize-month
         """
         # Check Permissions
@@ -42,9 +43,26 @@ class MonthlySummary:
 
         await message.add_reaction("⏳")
 
-        # Range: Last 30 days
+        # Configuration
+        try:
+            game_ordinal = int(os.environ.get("LOTSLARP_GAME_WEEK_ORDINAL", 1))
+            game_weekday = int(os.environ.get("LOTSLARP_GAME_WEEKDAY", 5)) # Default Saturday (5)
+        except ValueError:
+            game_ordinal = 1
+            game_weekday = 5
+
+        # Range: Last Game -> Now
         end_date = datetime.now(timezone.utc)
-        start_date = end_date - timedelta(days=30)
+        
+        # Calculate Start Date (Last Game)
+        # Note: get_previous_game_date returns a date object, need to convert to datetime
+        last_game_date = get_previous_game_date(end_date.date(), ordinal=game_ordinal, weekday=game_weekday)
+        start_date = datetime(
+            last_game_date.year, 
+            last_game_date.month, 
+            last_game_date.day, 
+            0, 0, 0, tzinfo=timezone.utc
+        )
         
         try:
             await generate_and_send_summary(
@@ -55,7 +73,7 @@ class MonthlySummary:
                 lore_manager=self.lore_manager,
                 start_date=start_date,
                 end_date=end_date,
-                title="Manual 30-Day Summary",
+                title="Monthly Game Cycle Summary (Manual)",
                 channel_id=self.digest_channel_id
             )
             await message.add_reaction("✅")
@@ -65,53 +83,61 @@ class MonthlySummary:
             await message.channel.send(f"**Error:** {str(e)}")
 
 
-def get_first_saturday(year, month):
-    """Returns a datetime.date object for the first Saturday of the specified month/year."""
-    d = datetime(year, month, 1)
-    while d.weekday() != 5:  # 5 is Saturday
-        d += timedelta(days=1)
-    return d.date()
-
 async def check_monthly_trigger(client, summary_module, gemini_model, pdf_gen, lore_manager):
     """
-    Scheduled job to check if today is the Thursday before the first Saturday of the month.
-    If so, sends a summary from the First Saturday of the Previous Month until Today.
+    Scheduled job to check if we are approaching the Game Day (default: Thursday before 1st Saturday).
+    If so, sends a summary from the Previous Game until Today.
     """
     now_utc = datetime.now(timezone.utc)
     today = now_utc.date()
     
-    # 1. Check if today is Thursday (weekday 3)
-    if today.weekday() != 3:
-        logger.debug("Monthly Trigger: Not Thursday. Skipping.")
+    # Configuration
+    try:
+        game_ordinal = int(os.environ.get("LOTSLARP_GAME_WEEK_ORDINAL", 1))
+        game_weekday = int(os.environ.get("LOTSLARP_GAME_WEEKDAY", 5)) # Default Saturday (5)
+    except ValueError:
+        game_ordinal = 1
+        game_weekday = 5
+
+    # Trigger Logic: 2 days before the Game
+    # Calculate target trigger weekday
+    trigger_weekday = (game_weekday - 2) % 7 
+    
+    # 1. Check if today is the trigger weekday
+    if today.weekday() != trigger_weekday:
+        logger.debug(f"Monthly Trigger: Today (weekday {today.weekday()}) is not trigger day ({trigger_weekday}). Skipping.")
         return
 
-    # 2. Check if the upcoming Saturday (Today + 2 days) is the 1st Saturday of the current month
-    upcoming_saturday = today + timedelta(days=2)
-    if upcoming_saturday.day > 7:
-        logger.debug("Monthly Trigger: Upcoming Saturday is not the first Saturday. Skipping.")
+    # 2. Check if the upcoming Game Day (Today + 2 days) is the correct ordinal occurrence
+    upcoming_game_date = today + timedelta(days=2)
+    
+    # Calculate the actual Game Date for this month to see if it matches our upcoming date
+    try:
+        actual_game_date = get_date_of_weekday_in_month(upcoming_game_date.year, upcoming_game_date.month, game_ordinal, game_weekday)
+    except ValueError:
+        logger.debug("Monthly Trigger: Could not calculate game date for this month. Skipping.")
+        return
+
+    if upcoming_game_date != actual_game_date:
+        logger.debug(f"Monthly Trigger: Upcoming potential game date ({upcoming_game_date}) is not the configured game date ({actual_game_date}). Skipping.")
         return
     
-    # It is the Thursday before the first Saturday!
-    logger.info("Monthly Trigger: It is the Thursday before the 1st Saturday. Initiating Summary.")
+    # It is the Trigger Day before the Game!
+    logger.info("Monthly Trigger: It is 2 days before the Game. Initiating Summary.")
 
     # 3. Calculate Range
     # End Date: Now
     end_date = now_utc
     
-    # Start Date: First Saturday of LAST Month
-    # Find first day of current month, subtract 1 day to get into prev month
-    first_of_this_month = today.replace(day=1)
-    last_of_prev_month = first_of_this_month - timedelta(days=1)
-    prev_month_year = last_of_prev_month.year
-    prev_month_month = last_of_prev_month.month
-    
-    first_sat_prev_month_date = get_first_saturday(prev_month_year, prev_month_month)
+    # Start Date: The PREVIOUS Game Date
+    # Since we are currently *before* this month's game, get_previous_game_date should correctly return last month's game.
+    last_game_date_obj = get_previous_game_date(today, ordinal=game_ordinal, weekday=game_weekday)
     
     # Convert date to datetime (UTC, start of day)
     start_date = datetime(
-        first_sat_prev_month_date.year, 
-        first_sat_prev_month_date.month, 
-        first_sat_prev_month_date.day, 
+        last_game_date_obj.year, 
+        last_game_date_obj.month, 
+        last_game_date_obj.day, 
         0, 0, 0, tzinfo=timezone.utc
     )
 
@@ -139,6 +165,94 @@ async def check_monthly_trigger(client, summary_module, gemini_model, pdf_gen, l
         title="Monthly Game Cycle Summary",
         channel_id=digest_channel_id
     )
+
+async def store_monthly_summary(firestore_client, summary_text, start_date, end_date):
+    """Stores the generated monthly summary in Firestore."""
+    if not firestore_client:
+        return
+
+    # ID format: YYYY_MM (based on the end date/current report month)
+    doc_id = end_date.strftime("%Y_%m")
+    
+    data = {
+        'year': end_date.year,
+        'month': end_date.month,
+        'summary_text': summary_text,
+        'start_date': start_date,
+        'end_date': end_date,
+        'created_at': datetime.now(timezone.utc)
+    }
+    
+    try:
+        await asyncio.to_thread(
+            firestore_client.collection('monthly_summaries').document(doc_id).set, 
+            data
+        )
+        logger.info(f"Stored monthly summary for {doc_id}.")
+    except Exception as e:
+        logger.error(f"Failed to store monthly summary: {e}")
+
+async def get_recent_monthly_summaries(firestore_client, current_end_date):
+    """Retrieves the N most recent monthly summaries before the current one."""
+    if not firestore_client:
+        return []
+        
+    try:
+        # Get context limit from ENV
+        try:
+            limit = int(os.environ.get("LOTSLARP_MONTHLY_SUMMARY_CONTEXT_MONTHS", 3))
+        except ValueError:
+            limit = 3
+            
+        if limit <= 0:
+            return []
+
+        # Current report ID
+        current_id = current_end_date.strftime("%Y_%m")
+
+        # Query: Order by ID descending (newest first), exclude current if it exists (via logic or ID check)
+        # We want summaries *before* this one.
+        # Since ID is YYYY_MM, we can just query where ID < current_id order by ID desc
+        
+        # Note: ID comparison works for strings "YYYY_MM"
+        col_ref = firestore_client.collection('monthly_summaries')
+        
+        # We need a synchronous wrapper for the query
+        def _query_sync():
+            # Filter for documents with ID less than current_id (previous months)
+            # Order by ID descending to get the closest ones
+            # Limit to N
+            query = col_ref.where(filter=discord.utils.MISSING, field_path='__name__', op_string='<', value=current_id)\
+                           .order_by('__name__', direction=firestore_client.Query.DESCENDING)\
+                           .limit(limit)
+                           
+            # Note: Firestore python client filtering by __name__ (document ID) can be tricky.
+            # An alternative is to just get all (if few) or order by 'end_date' desc.
+            # Let's try ordering by 'end_date' desc where end_date < current_end_date
+            
+            q = col_ref.order_by('end_date', direction='DESCENDING').limit(limit + 1) # Get a few + current just in case
+            docs = q.stream()
+            
+            results = []
+            for doc in docs:
+                if doc.id == current_id:
+                    continue
+                d = doc.to_dict()
+                results.append(f"**Summary for {d.get('year')}-{d.get('month'):02d}:**\n{d.get('summary_text')}")
+            
+            # We want the most recent ones (closest to now), which are at the front of the list (descending)
+            # Take the top N
+            most_recent = results[:limit]
+            
+            # Reverse to Chronological Order for the prompt
+            most_recent.reverse()
+            return most_recent
+
+        return await asyncio.to_thread(_query_sync)
+
+    except Exception as e:
+        logger.error(f"Failed to retrieve past summaries: {e}")
+        return []
 
 
 async def generate_and_send_summary(client, summary_module, gemini_model, pdf_gen, lore_manager, start_date, end_date, title, channel_id):
@@ -219,17 +333,37 @@ async def generate_and_send_summary(client, summary_module, gemini_model, pdf_ge
         try:
             all_text = "\n".join(plain_text_for_summary)
             lore_context = ""
+            
+            # Fetch Lore
             if lore_manager:
                 try:
                     lore_context = await lore_manager.get_relevant_lore(all_text)
                 except Exception as e:
                     logger.error(f"Lore error: {e}")
 
-            default_prompt = "Please provide a comprehensive monthly summary of these roleplay messages, highlighting major plot developments, character arcs, and key decisions."
+            # Fetch Previous Summaries Context
+            past_context_str = ""
+            try:
+                past_summaries = await get_recent_monthly_summaries(summary_module.db, end_date)
+                if past_summaries:
+                    past_context_str = "\n\n*** PREVIOUS MONTHLY SUMMARIES (Context) ***\n" + "\n\n".join(past_summaries) + "\n\n"
+                    logger.info(f"Injected {len(past_summaries)} past monthly summaries for context.")
+            except Exception as e:
+                logger.error(f"Error fetching past summaries context: {e}")
+
+            default_prompt = "You are an AI assistant tasked with creating a high-level executive summary of Discord conversations. Analyze the following collection of messages and provide a concise summary. The summary should adhere to these rules: 1. Start with a one-sentence overview of the general topics discussed. 2. Use bullet points to highlight key decisions, action items, or significant points of interest. 3. Group related topics together under a common sub-heading if the conversation covers multiple distinct subjects. 4. Maintain a neutral, professional tone. 5. Do not invent or infer information that isn't present in the messages. 6. The summary should be no more than 4 paragraphs in total. Here are the messages to summarize:"
             prompt_instructions = os.environ.get("LOTSLARP_DISCORD_BOT_MONTHLY_PROMPT", default_prompt)
-            prompt = f"{prompt_instructions}\n{lore_context}\n\n" + all_text
+            
+            # Combine Contexts
+            # Order: Instructions -> Previous Summaries -> Lore -> Current Messages
+            prompt = f"{prompt_instructions}\n{past_context_str}{lore_context}\n\n" + all_text
             
             executive_summary = await asyncio.to_thread(_generate_summary_sync, prompt)
+            
+            # Store the new summary
+            if summary_module and summary_module.db and executive_summary and "Error:" not in executive_summary:
+                await store_monthly_summary(summary_module.db, executive_summary, start_date, end_date)
+
         except Exception as e:
             logger.error(f"Summary thread error: {e}", exc_info=True)
             executive_summary = "Error: Summary generation process failed."

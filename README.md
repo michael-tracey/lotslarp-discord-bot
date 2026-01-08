@@ -1,69 +1,44 @@
 # LotsLarp Discord Bot
 
-This project is a Discord bot and a web UI that work together.
+A powerful Discord bot designed for LARP (Live Action Role Playing) communities, providing roleplay message tracking, AI-powered summaries, and game-cycle reporting.
 
-## Discord Bot
+## Features & Commands
 
-The Discord bot has the following commands:
-* `/hello`: Greets the user in the Discord channel.
-* `/throw`: Plays rock paper scissors with the user. If the user inputs 'random' for their throw, the bot will randomly choose.
-* `/huh`: Searches a content database for a title. If a matching title is found, it will display the content. If no title is found, it will show similar titles.
+### 🌍 Public Commands
+*   **/lotslarp help**: Displays a list of available commands.
+*   **/lotslarp hello**: Greets the user.
+*   **/throw <object>**: Randomly throws an item or plays rock-paper-scissors.
+*   **/huh <question>**: Searches the game's content database for lore or rules info.
 
-## Web UI
+### 🛡️ Storyteller (Admin) Commands
+*   **/lotslarp summarize <channel_id>**: Generates an AI summary of a specific channel from the last summary mention to the present.
+*   **/lotslarp report month**: Generates a summary from the **last scheduled game** until now. This uses your LARP's specific game schedule (e.g., "1st Saturday").
+*   **/lotslarp report digest [day|week|month|now]**: Generates a PDF digest of messages. Defaults to "month". Use "now" to force the scheduled digest (unsent messages).
+*   **/lotslarp report voice [days]**: Provides statistics on voice channel activity over the specified period.
+*   **/lotslarp stale**: Scans for roleplay channels that have significant activity but no recent summary.
+*   **/lotslarp status**: Displays health metrics for the bot, database, and AI systems.
+*   **/lotslarp instructions**: View detailed guides for Storyteller features.
 
-The web UI displays a log of the commands that have been called, the user that called them, and the time they were called. It requires a login to use.
-   
-## Running the Application
+## Summary & RAG System
 
-This application uses supervisord to manage the Discord bot and web UI processes. To run the application, start supervisord. First build the docker image using `docker build -t lotslarp .` then run it using `docker compose up -d`.
+The bot features an advanced summarization engine:
+*   **Role Mentions**: Any message that mentions the `@summary` (configurable) role is cached for the next digest.
+*   **RAG (Retrieval-Augmented Generation)**: The AI automatically cross-references roleplay messages with a "Lore Glossary" in Firestore to ensure summaries are contextually accurate.
+*   **Monthly Cycle**: The bot can be configured to automatically trigger reports based on your game schedule, looking back to the previous game and providing context from previous monthly summaries to track long-running plots.
 
-### Google Cloud Authentication (for Local Development)
+## Configuration
 
-To run the bot locally with Firestore integration, you need to authenticate your machine with Google Cloud. This is not required when deployed to Cloud Run, as authentication is handled automatically.
+The bot is highly configurable via environment variables (see `.env.example`):
+*   `LOTSLARP_GAME_WEEK_ORDINAL`: Sets which week the game happens (e.g., 1st, 2nd).
+*   `LOTSLARP_GAME_WEEKDAY`: Sets the day of the week for the game (0=Monday, 6=Sunday).
+*   `LOTSLARP_MONTHLY_SUMMARY_CONTEXT_MONTHS`: Number of previous summaries to include as AI context.
 
-1.  Install the [Google Cloud CLI](https://cloud.google.com/sdk/docs/install).
-2.  Log in to your Google account:
-    ```bash
-    gcloud auth login
-    ```
-3.  Set up Application Default Credentials (ADC). This is what the Python client library uses to authenticate locally.
-    ```bash
-    gcloud auth application-default login
-    ```
-4.  Ensure your local environment is pointed to the correct project:
-    ```bash
-    gcloud config set project YOUR_PROJECT_ID
-    ```
+## Deployment
 
-## Deployment to Google Compute Engine (GCE)
+This application is designed to run in a Docker container and can be deployed to **Google Cloud Platform** (Cloud Run or GCE).
 
-To save on costs compared to Cloud Run, this bot can be deployed to a `e2-micro` VM instance on Google Compute Engine (often free tier eligible).
+### Quick Deploy (GCE)
+1.  Copy `.env.example` to `.env` and fill in your secrets.
+2.  Run `./deploy-gce.sh`.
 
-### Prerequisites
-
-1.  **Install Tools:** Ensure you have the following installed on your local machine:
-    *   `tofu` (OpenTofu) or `terraform`
-    *   `ansible`
-    *   `gcloud` CLI
-
-2.  **Create .env File:**
-    You **must** create a `.env` file in the root directory of this project before deploying. This file contains your secrets and configuration.
-    
-    Copy the example:
-    ```bash
-    cp .env.example .env
-    ```
-    Then edit `.env` and fill in your values (Discord Token, Gemini API Key, etc.).
-
-### Deploying
-
-Run the deployment script:
-
-```bash
-./deploy-gce.sh
-```
-
-This script will:
-1.  Build and push the Docker image to Google Artifact Registry.
-2.  Provision the VM and networking using OpenTofu/Terraform.
-3.  Configure the VM and start the bot container using Ansible.
+This will provision a free-tier eligible `e2-micro` instance and set up the bot automatically.

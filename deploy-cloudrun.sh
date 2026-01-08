@@ -68,6 +68,12 @@ while IFS= read -r line || [[ -n "$line" ]]; do
     # Remove surrounding quotes for processing
     value=$(echo "$value" | sed 's/^"//;s/"$//')
     
+    # Skip DCE_CLI_PATH as it is set in the Dockerfile for cloud environments
+    if [[ "$key" == "DCE_CLI_PATH" ]]; then
+        echo "⏭️  Skipping $key (Using Dockerfile default)"
+        continue
+    fi
+    
     if is_true_secret "$key"; then
         echo "🔒 Secret: $key (Managing in Secret Manager)"
         

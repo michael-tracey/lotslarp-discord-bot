@@ -6,11 +6,17 @@ import io
 import itertools
 import math
 import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
 import pytz
 from datetime import datetime, timedelta
 from google.cloud.firestore_v1 import FieldFilter
+
+try:
+    import matplotlib
+    import matplotlib.pyplot as plt
+    import matplotlib.dates as mdates
+    HAS_MATPLOTLIB = True
+except ImportError:
+    HAS_MATPLOTLIB = False
 
 logger = logging.getLogger(__name__)
 
@@ -482,7 +488,7 @@ class Voice:
 
     async def _generate_timeline_image(self, sessions, start_date):
         """Generates a Gantt-chart style timeline using matplotlib."""
-        if not sessions: return None
+        if not sessions or not HAS_MATPLOTLIB: return None
         
         try:
             # Use Agg backend for headless environments
@@ -605,7 +611,7 @@ class Voice:
 
     async def _generate_network_image(self, sessions, start_date):
         """Generates a circular network graph of user interactions."""
-        if not sessions: return None
+        if not sessions or not HAS_MATPLOTLIB: return None
 
         try:
             import matplotlib

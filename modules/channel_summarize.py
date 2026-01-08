@@ -212,14 +212,14 @@ class ChannelSummarize:
                 try:
                     # Get custom prompt or use default
                     default_prompt = (
-                        "You are an AI assistant tasked with creating a concise summary of Discord channel conversations. "
-                        "Analyze the following messages and provide a clear, organized summary that captures:\n"
-                        "1. Main topics discussed\n"
-                        "2. Key decisions or conclusions\n"
-                        "3. Important questions raised\n"
-                        "4. Action items or next steps (if any)\n\n"
-                        "Keep the summary concise but informative. Use bullet points for clarity.\n\n"
-                        "Messages:\n\n"
+                        "You are an AI assistant tasked with creating a high-level executive summary of Discord conversations. "
+                        "Analyze the following collection of messages and provide a concise summary. The summary should adhere to these rules: "
+                        "1. Start with a one-sentence overview of the general topics discussed. "
+                        "2. Use bullet points to highlight key decisions, action items, or significant points of interest. "
+                        "3. Group related topics together under a common sub-heading if the conversation covers multiple distinct subjects. "
+                        "4. Maintain a neutral, professional tone. "
+                        "5. Do not invent or infer information that isn't present in the messages. "
+                        "6. The summary should be no more than 4 paragraphs in total. Here are the messages to summarize:"
                     )
                     
                     # RAG Integration

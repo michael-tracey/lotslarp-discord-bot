@@ -21,6 +21,7 @@ from modules.channel_summarize import handle_share_interaction
 from modules.summary_reminder import handle_remind_interaction
 from modules.lore import LoreManager
 from modules.monthly_summary import check_monthly_trigger
+from modules.archive_cleanup import cleanup_old_archives
 
 # --- Health Monitoring ---
 def periodic_health_check():
@@ -136,6 +137,7 @@ async def process_command(client: discord.Client, message: discord.Message, comm
         command_name_for_log = command_name
 
         logger.info(f"Processing command: '{command_name}' from {message.author.name}")
+        logger.info(f"Checking command_map for '{command_name}'. Current registered commands: {list(command_map.keys())}")
 
         if command_name in command_map:
             command_instance = command_map[command_name]
@@ -601,7 +603,7 @@ async def send_digest_pdf(client: discord.Client, summary_module, gemini_model, 
                 except Exception as e:
                     logger.error(f"Error fetching lore for digest: {e}")
 
-            default_prompt = "Please provide an executive summary of the following messages:\n\n"
+            default_prompt = "You are an AI assistant tasked with creating a high-level executive summary of Discord conversations. Analyze the following collection of messages and provide a concise summary. The summary should adhere to these rules: 1. Start with a one-sentence overview of the general topics discussed. 2. Use bullet points to highlight key decisions, action items, or significant points of interest. 3. Group related topics together under a common sub-heading if the conversation covers multiple distinct subjects. 4. Maintain a neutral, professional tone. 5. Do not invent or infer information that isn't present in the messages. 6. The summary should be no more than 4 paragraphs in total. Here are the messages to summarize:"
             prompt_instructions = os.environ.get("LOTSLARP_DISCORD_BOT_GEMINI_PROMPT", default_prompt)
             prompt = f"{prompt_instructions}\n{lore_context}\n" + all_text
             
@@ -728,11 +730,11 @@ def setup_bot():
     intents.guilds = True
 
     command_classes = {}
-    module_names_to_load = ["hello", "throw", "huh", "summary", "digest", "pdf_generator", "larpbot_status", "channel_summarize", "digest_now", "voice", "summary_reminder", "help", "monthly_summary"]
+    module_names_to_load = ["throw", "huh", "summary", "pdf_generator", "lotslarp"]
     logger.info(f"Attempting to load command modules: {module_names_to_load}")
     for module_name_str in module_names_to_load:
         full_module_path = f"modules.{module_name_str}"
-        logger.info(f"Attempting to import module: {full_module_path}")
+        logger.info(f"Loading module: {full_module_path}")
         try:
             module = importlib.import_module(full_module_path)
             logger.info(f"Successfully imported module object for {full_module_path}: {module}")
@@ -817,39 +819,24 @@ def setup_bot():
                 if firestore_client:
                     summary_module_instance = Cls(db_client=firestore_client)
                 else:
-                    logger.error("Firestore client not available, cannot instantiate Summary module.")
-                continue # This is not a command, so don't add to map
-            elif name == "voice":
-                if firestore_client:
-                    voice_module_instance = Cls(firestore_client=firestore_client)
-                    instance = voice_module_instance # It is also a command (/voice-report)
-                else:
                     logger.error("Firestore client not available, cannot instantiate Voice module.")
                     continue
-            elif name == "digest":
-                # Updated to pass lore_manager
-                instance = Cls(summary_module=summary_module_instance, gemini_model=gemini_model, pdf_gen=pdf_generator, lore_manager=lore_manager)
-            elif name == "channel_summarize":
-                # Updated to pass lore_manager
-                instance = Cls(gemini_model=gemini_model, firestore_client=firestore_client, lore_manager=lore_manager)
-            elif name == "digest_now":
-                # Special handling for digest-now which needs the send callback
+            elif name == "lotslarp":
                 instance = Cls(
-                    send_digest_callback=send_digest_pdf,
-                    summary_module=summary_module_instance,
+                    db_path=app_db_path, 
                     gemini_model=gemini_model,
-                    lore_manager=lore_manager
+                    firestore_client=firestore_client,
+                    summary_module=summary_module_instance,
+                    pdf_gen=pdf_generator,
+                    lore_manager=lore_manager,
+                    send_digest_callback=send_digest_pdf
                 )
-            elif name == "larpbot_status":
-                status_command_instance = Cls(db_path=app_db_path, gemini_model=gemini_model)
-                instance = status_command_instance
+                # Expose the internal status handler for startup checks
+                status_command_instance = instance.status_handler
+                # Expose stale handler for scheduler
+                summary_reminder_instance = instance.stale_handler
             elif name == "pdf_generator":
                 continue # Not a command
-            elif name == "summary_reminder":
-                instance = Cls()
-                summary_reminder_instance = instance # Capture instance
-            elif name == "monthly_summary":
-                instance = Cls(summary_module=summary_module_instance, gemini_model=gemini_model, pdf_gen=pdf_generator, lore_manager=lore_manager)
             else:
                 instance = Cls() 
 
@@ -857,7 +844,9 @@ def setup_bot():
                 # Use the instance's `name` attribute if it exists, otherwise use the module name
                 command_name = getattr(instance, 'name', name)
                 command_map_instances[command_name] = instance
-                logger.info(f"Successfully instantiated and mapped command: '{command_name}'")
+                logger.info(f"Successfully instantiated and mapped command: '{command_name}' (from module: {name})")
+            else:
+                logger.warning(f"Module '{name}' did not produce an instance.")
 
         except TypeError as te: # Catch specific TypeError for __init__
             logger.error(f"TypeError instantiating command {name} from class {Cls}: {te}. Check __init__ signature.", exc_info=True)
@@ -866,6 +855,8 @@ def setup_bot():
 
     if not command_map_instances:
         logger.error("CRITICAL: No commands were successfully instantiated. Bot will not have commands.")
+    else:
+        logger.info(f"Bot setup complete. Registered commands: {list(command_map_instances.keys())}")
     
     # Create the client and scheduler
     scheduler = AsyncIOScheduler()
@@ -899,6 +890,10 @@ def setup_bot():
     if voice_module_instance:
         scheduler.add_job(voice_module_instance.cleanup_old_logs, 'cron', hour=0)
         logger.info("Scheduled voice log cleanup for daily at 00:00.")
+    
+    # Schedule Archive Cleanup (Daily)
+    scheduler.add_job(cleanup_old_archives, 'cron', hour=0, args=[client, firestore_client])
+    logger.info("Scheduled stale archive channel cleanup for daily at 00:00.")
         
     # Schedule Stale Channels Scan
     if summary_reminder_instance:

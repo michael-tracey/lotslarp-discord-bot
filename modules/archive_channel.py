@@ -61,8 +61,10 @@ class ArchiveChannel:
                 logger.info(f"Locked thread {channel.name}.")
             else:
                 # TextChannel
-                # Deny send_messages for @everyone
-                await channel.set_permissions(guild.default_role, send_messages=False)
+                # Deny send_messages for @everyone, preserving other permissions
+                overwrite = channel.overwrites_for(guild.default_role)
+                overwrite.send_messages = False
+                await channel.set_permissions(guild.default_role, overwrite=overwrite)
                 logger.info(f"Set {channel.name} to read-only for @everyone.")
         except discord.Forbidden:
             logger.warning(f"Missing permissions to make {channel.name} read-only.")
@@ -230,8 +232,10 @@ class UnarchiveChannel:
                 logger.info(f"Unlocked thread {channel.name}.")
             else:
                 # TextChannel
-                # Reset send_messages for @everyone (set to None to inherit/default)
-                await channel.set_permissions(guild.default_role, send_messages=None)
+                # Reset send_messages for @everyone (set to None to inherit/default), preserving other permissions
+                overwrite = channel.overwrites_for(guild.default_role)
+                overwrite.send_messages = None
+                await channel.set_permissions(guild.default_role, overwrite=overwrite)
                 logger.info(f"Restored {channel.name} permissions for @everyone.")
         except discord.Forbidden:
             logger.warning(f"Missing permissions to unlock {channel.name}.")

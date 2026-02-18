@@ -11,7 +11,7 @@ ARTIFACT_REGISTRY_REPO=${ARTIFACT_REGISTRY_REPO:-"discord-bots"}
 # --- Constants ---
 # List of "True Secrets" that MUST be in Secret Manager.
 # All other .env variables will be passed as plain environment variables via YAML file.
-TRUE_SECRETS=("LOTSLARP_DISCORD_BOT_DISCORD_TOKEN" "LOTSLARP_DISCORD_BOT_GEMINI_API_KEY")
+TRUE_SECRETS=("LOTSLARP_DISCORD_BOT_DISCORD_TOKEN" "LOTSLARP_DISCORD_BOT_GEMINI_API_KEY" "LOTSLARP_ADMIN_PASSWORD")
 
 # --- Helper Functions ---
 setup_monitoring() {
@@ -161,7 +161,7 @@ CMD="gcloud run deploy $SERVICE_NAME \
   --no-cpu-throttling \
   --min-instances 1 \
   --max-instances 3 \
-  --no-allow-unauthenticated"
+  --allow-unauthenticated"
 
 if [ -n "$SET_SECRETS_STRING" ]; then
     CMD="$CMD --set-secrets=$SET_SECRETS_STRING"

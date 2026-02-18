@@ -1,5 +1,8 @@
 import discord
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 class Instructions:
     def __init__(self):
@@ -11,6 +14,8 @@ class Instructions:
         Provides detailed instructions for using the bot's advanced features.
         Usage: /lotslarp instructions
         """
+        logger.info(f"Command started: /lotslarp instructions by {message.author} in {message.channel}")
+
         is_admin = False
         if isinstance(message.author, discord.Member):
             for role in message.author.roles:
@@ -19,6 +24,7 @@ class Instructions:
                     break
         
         if not is_admin:
+            logger.warning(f"Permission denied for {message.author}")
             await message.channel.send("🚫 These instructions are intended for Storytellers.")
             return
 
@@ -66,4 +72,8 @@ class Instructions:
 
         embed.set_footer(text="For a quick list of all commands, use /lotslarp help.")
 
-        await message.channel.send(embed=embed)
+        try:
+            await message.channel.send(embed=embed)
+            logger.info("Instructions message sent successfully.")
+        except Exception as e:
+            logger.error(f"Failed to send instructions message: {e}", exc_info=True)

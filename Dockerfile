@@ -14,6 +14,7 @@ RUN apt-get update && apt-get install -y \
     libopenjp2-7-dev \
     libffi-dev \
     libicu-dev \
+    ghostscript \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .

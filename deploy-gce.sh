@@ -55,7 +55,24 @@ tofu apply -auto-approve \
 
 # Get Public IP
 VM_IP=$(tofu output -raw public_ip)
+MAP_URL="http://$VM_IP:8080"
 echo "VM Public IP: $VM_IP"
+echo "Calculated Map URL: $MAP_URL"
+
+# Wait for SSH to become available
+echo "Waiting for SSH to become available on $VM_IP..."
+MAX_RETRIES=30
+RETRY_COUNT=0
+while ! nc -z -w5 "$VM_IP" 22; do
+    RETRY_COUNT=$((RETRY_COUNT + 1))
+    if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
+        echo "Error: SSH did not become available after $MAX_RETRIES attempts."
+        exit 1
+    fi
+    echo "SSH not ready yet (attempt $RETRY_COUNT/$MAX_RETRIES). Waiting..."
+    sleep 5
+done
+echo "✅ SSH is available!"
 
 cd ..
 
@@ -70,7 +87,7 @@ echo "$VM_IP ansible_user=$SSH_USER ansible_ssh_private_key_file=$SSH_KEY_PATH a
 # Run Playbook
 # We pass the local .env file path to Ansible
 ansible-playbook -i "$INVENTORY_FILE" ansible/playbook.yml \
-    --extra-vars "docker_image=$FULL_IMAGE_NAME env_file_src=$(pwd)/.env"
+    --extra-vars "docker_image=$FULL_IMAGE_NAME env_file_src=$(pwd)/.env map_url=$MAP_URL"
 
 # 5. Cleanup Old Images
 echo "--- Cleaning up old images ---"

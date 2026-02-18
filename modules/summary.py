@@ -5,11 +5,13 @@ import asyncio # Added this import
 from google.cloud.firestore_v1.base_client import BaseClient
 from google.cloud.firestore_v1 import FieldFilter
 
+logger = logging.getLogger(__name__)
+
 class Summary:
     def __init__(self, db_client: BaseClient):
         self.db = db_client
         self.collection_ref = self.db.collection('summary_messages')
-        logging.info("Summary module initialized with Firestore client.")
+        logger.info("Summary module initialized with Firestore client.")
 
     async def cache_message(self, message: discord.Message):
         """
@@ -20,7 +22,7 @@ class Summary:
 
     def _cache_message_sync(self, message: discord.Message):
         if message.author.bot:
-            logging.info(f"Skipping caching for bot message {message.id} from {message.author.name}")
+            logger.info(f"Skipping caching for bot message {message.id} from {message.author.name}")
             return
 
         doc_ref = self.collection_ref.document(str(message.id))
@@ -65,7 +67,7 @@ class Summary:
         }
         
         doc_ref.set(doc_data)
-        logging.info(f"Cached and enriched message {message.id} to Firestore.")
+        logger.info(f"Cached and enriched message {message.id} to Firestore.")
 
     async def get_messages_for_digest(self):
         """Fetches all unsent messages, ordered by timestamp."""
@@ -163,7 +165,7 @@ class Summary:
             batch.update(doc_ref, {'sent_date': sent_time})
             
         batch.commit()
-        logging.info(f"Marked {len(message_ids)} messages as sent in Firestore.")
+        logger.info(f"Marked {len(message_ids)} messages as sent in Firestore.")
 
     def _delete_collection_in_batches(self, query, batch_size):
         """Helper to delete documents from a query in batches."""
@@ -193,10 +195,10 @@ class Summary:
         await asyncio.to_thread(self._clear_all_messages_sync)
 
     def _clear_all_messages_sync(self):
-        logging.warning("Clearing all messages from the Firestore summary_messages collection.")
+        logger.warning("Clearing all messages from the Firestore summary_messages collection.")
         query = self.collection_ref
         deleted_count = self._delete_collection_in_batches(query, 100)
-        logging.info(f"Cleared {deleted_count} messages from Firestore.")
+        logger.info(f"Cleared {deleted_count} messages from Firestore.")
 
     async def delete_old_messages(self):
         """Deletes messages and summaries older than twelve weeks."""
@@ -207,17 +209,17 @@ class Summary:
         cutoff_date = datetime.datetime.utcnow() - datetime.timedelta(weeks=12)
         
         # 1. Clean up summary_messages
-        logging.info(f"Deleting messages older than {cutoff_date} from summary_messages...")
+        logger.info(f"Deleting messages older than {cutoff_date} from summary_messages...")
         query_messages = self.collection_ref.where(filter=FieldFilter('timestamp', '<', cutoff_date))
         deleted_messages = self._delete_collection_in_batches(query_messages, 100)
         
         # 2. Clean up channel_summaries
-        logging.info(f"Deleting summaries older than {cutoff_date} from channel_summaries...")
+        logger.info(f"Deleting summaries older than {cutoff_date} from channel_summaries...")
         summaries_ref = self.db.collection('channel_summaries')
         query_summaries = summaries_ref.where(filter=FieldFilter('created_at', '<', cutoff_date))
         deleted_summaries = self._delete_collection_in_batches(query_summaries, 100)
         
         if deleted_messages > 0 or deleted_summaries > 0:
-            logging.info(f"Cleanup complete. Deleted {deleted_messages} messages and {deleted_summaries} summaries.")
+            logger.info(f"Cleanup complete. Deleted {deleted_messages} messages and {deleted_summaries} summaries.")
         else:
-            logging.info("No old data found to delete.")
+            logger.info("No old data found to delete.")

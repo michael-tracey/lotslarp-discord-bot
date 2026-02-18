@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LotsLarp Sect Timeline</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: sans-serif;
+            background-color: #1a1a1a;
+            color: #eee;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        h1 {
+            text-align: center;
+            color: #e5e5e5;
+            margin-bottom: 20px;
+        }
+        .main-content-container {
+            display: flex;
+            flex-direction: row;
+            flex-grow: 1;
+            gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .left-sidebar-wrapper {
+            width: 300px;
+            flex-shrink: 0;
+            height: 90vh;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .info-panel-section {
+            background-color: #333;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-y: auto;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .info-panel-section h2 {
+            color: #ff4500;
+            margin-top: 0;
+            margin-bottom: 5px;
+            text-align: center;
+        }
+        #map-container {
+            flex-grow: 1;
+            background-color: #333;
+            position: relative;
+            border-radius: 8px;
+            overflow: hidden;
+            height: 90vh;
+            display: flex;
+            flex-direction: column;
+        }
+         #map {
+             width: 100%;
+             flex-grow: 1;
+             position: relative; /* Needed for legend positioning */
+         }
+        .timeline-container {
+            margin-top: 10px;
+            text-align: center;
+            width: 100%;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            padding: 10px 0;
+            background-color: #444;
+            border-radius: 8px;
+            box-sizing: border-box;
+        }
+        .timeline-container label {
+            margin-right: 10px;
+            font-size: 1.1em;
+        }
+        .timeline-container input[type="range"] {
+            width: 80%;
+            max-width: 600px;
+            cursor: pointer;
+        }
+        .timeline-controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 10px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        .timeline-controls button {
+            margin: 0;
+            padding: 8px 15px;
+            background-color: #ff4500;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background-color 0.3s ease;
+        }
+        .timeline-controls button:hover {
+            background-color: #e03d00;
+        }
+        .timeline-container #current-year {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-left: 10px;
+            color: #ff4500;
+        }
+        .legend {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #eee;
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 1000;
+            width: auto;
+            max-width: 150px;
+        }
+        .legend h4 {
+            color: #ff4500;
+            margin-top: 0;
+            margin-bottom: 5px;
+        }
+        .legend i {
+            width: 18px;
+            height: 18px;
+            float: left;
+            margin-right: 8px;
+            opacity: 0.7;
+        }
+        .legend div {
+            margin-bottom: 5px;
+            color: #eee;
+        }
+
+        .leaflet-popup .leaflet-popup-content-wrapper {
+            background: rgba(0, 0, 0, 0.9);
+            color: #eee;
+            border-radius: 8px;
+        }
+
+        .leaflet-popup .leaflet-popup-tip {
+             background: rgba(0, 0, 0, 0.9);
+        }
+
+        .sect-popup .leaflet-popup-content {
+            font-size: 1.1em;
+        }
+        .sect-popup .leaflet-popup-content b {
+            color: #ff4500;
+        }
+
+        .multi-change-popup {
+            position: absolute;
+            top: 50%;
+            left: 20px;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: #eee;
+            padding: 15px;
+            border-radius: 8px;
+            z-index: 1000;
+            max-width: 250px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+        }
+        .multi-change-popup h4 {
+            margin-top: 0;
+            color: #ff4500;
+        }
+        .multi-change-popup ul {
+            padding-left: 20px;
+            margin-bottom: 0;
+        }
+        .multi-change-popup li {
+            margin-bottom: 5px;
+        }
+
+        #map-year-display {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            left: auto;
+            transform: none;
+            font-size: 3em;
+            font-weight: bold;
+            color: #ff4500;
+            z-index: 800;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .leaflet-control-container .leaflet-top.leaflet-left {
+             top: 10px;
+             left: 10px;
+        }
+
+         #changes-display {
+             padding: 15px;
+             background: rgba(0, 0, 0, 0.8);
+             color: #eee;
+             border-radius: 8px;
+             z-index: 900;
+             display: none;
+             text-align: left;
+             margin-top: 0;
+         }
+         #changes-display h4 {
+             margin-top: 0;
+             color: #ff4500;
+         }
+         #changes-display ul {
+             padding-left: 20px;
+             margin-bottom: 0;
+         }
+         #changes-display li {
+             margin-bottom: 5px;
+         }
+
+         .speed-controls {
+             display: flex;
+             align-items: center;
+             gap: 5px;
+         }
+         .speed-controls button {
+             padding: 5px 10px;
+             margin: 0;
+             background-color: #555;
+             color: white;
+             border: none;
+             border-radius: 4px;
+             cursor: pointer;
+             transition: background-color 0.2s ease;
+         }
+         .speed-controls button:hover {
+             background-color: #777;
+         }
+         .speed-controls button.active {
+             background-color: #ff4500;
+         }
+
+         .advanced-options-section {
+             margin-top: 15px;
+             display: flex;
+             flex-direction: column;
+             gap: 10px;
+         }
+
+         #advanced-options-button {
+            display: block;
+            padding: 8px 15px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background-color 0.3s ease;
+            width: 100%;
+            box-sizing: border-box;
+            text-align: center;
+        }
+         #advanced-options-button:hover {
+             background-color: #0056b3;
+         }
+
+         .advanced-options {
+             padding: 10px;
+             background-color: #333;
+             border-radius: 8px;
+             display: none;
+             text-align: left;
+             display: flex;
+             flex-direction: column;
+             gap: 10px;
+         }
+         .advanced-options p {
+             margin: 0;
+         }
+         .advanced-options input[type="file"] {
+             display: none;
+         }
+         .advanced-options label,
+         .advanced-options button {
+             display: inline-block;
+             padding: 8px 15px;
+             background-color: #007bff;
+             color: white;
+             border: none;
+             border-radius: 5px;
+             cursor: pointer;
+             font-size: 1em;
+             transition: background-color 0.3s ease;
+             margin-right: 10px;
+         }
+         .advanced-options label:hover,
+         .advanced-options button:hover {
+             background-color: #0056b3;
+         }
+         .advanced-options a {
+             color: #007bff;
+             text-decoration: none;
+             display: inline-block;
+         }
+         .advanced-options a:hover {
+             text-decoration: underline;
+         }
+
+         #timeline-editor-button {
+             display: inline-block;
+             padding: 8px 15px;
+             background-color: #007bff;
+             color: white;
+             border: none;
+             border-radius: 5px;
+             cursor: pointer;
+             font-size: 1em;
+             transition: background-color 0.3s ease;
+             margin-right: 10px;
+         }
+          #timeline-editor-button:hover {
+              background-color: #0056b3;
+          }
+
+
+         @media (max-width: 768px) {
+             h1 {
+                 display: none; /* Remove header on mobile */
+             }
+             .main-content-container {
+                 flex-direction: column;
+                 gap: 10px;
+                 padding: 0 10px;
+             }
+             .left-sidebar-wrapper {
+                 width: 100%;
+                 max-height: none;
+                 height: auto;
+                 order: 3; /* Sidebar comes after map and timeline */
+             }
+             #map-container {
+                 height: 400px; /* Adjust map height for mobile */
+                 order: 1; /* Map comes first */
+                 flex-direction: column; /* Stack map and timeline vertically */
+             }
+             #map {
+                 flex-grow: 1;
+                 height: auto; /* Allow map to take available height */
+             }
+             .timeline-container {
+                 order: 2; /* Timeline comes after the map */
+                 margin-top: 0; /* Remove top margin */
+             }
+             .timeline-container input[type="range"] {
+                 width: 95%;
+             }
+             .timeline-controls {
+                 flex-direction: column;
+                 gap: 10px;
+             }
+             .speed-controls button {
+                 margin: 0 5px;
+             }
+             .legend {
+                 position: static; /* Position legend statically within map container */
+                 margin-top: 10px; /* Add space below map */
+                 width: 100%; /* Make legend take full width */
+                 max-width: none; /* Remove max width */
+                 display: grid; /* Use grid for 2 columns */
+                 grid-template-columns: repeat(2, 1fr); /* Two equal columns */
+                 gap: 5px; /* Gap between legend items */
+                 padding: 10px; /* Adjust padding */
+                 box-sizing: border-box; /* Include padding in width */
+             }
+             .legend h4 {
+                 grid-column: span 2; /* Make title span both columns */
+                 text-align: center;
+                 margin-bottom: 10px;
+             }
+             .legend div {
+                 margin-bottom: 0; /* Remove bottom margin */
+             }
+              #map-year-display {
+                  font-size: 2em;
+              }
+              #changes-display {
+                  position: static;
+                  margin-top: 10px;
+                  max-width: 100%;
+              }
+         }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>LotsLarp Sect Timeline</h1>
+
+    <div class="main-content-container">
+        <div class="left-sidebar-wrapper">
+            <div class="info-panel-section">
+                <h2>Info Panel</h2>
+                <div id="changes-display">
+                    <h4>Timeline Changes:</h4>
+                    <ul>
+                        </ul>
+                </div>
+            </div>
+            <div class="advanced-options-section">
+                 <button id="advanced-options-button">Advanced Options</button>
+                 <div class="advanced-options" id="advanced-options" style="display: none;">
+                     <p><button id="timeline-editor-button" onclick="window.open('/admin', '_blank')">Open Timeline Editor</button></p>
+                 </div>
+            </div>
+        </div>
+
+        <div id="map-container">
+            <div id="map">
+                 <div class="legend">
+                    <h4>Sect Control</h4>
+                    <div><i style="background:#ff0000;"></i> Sabbat</div>
+                    <div><i style="background:#0000ff;"></i> Camarilla</div>
+                    <div><i style="background:#00ff00;"></i> Anarchs</div>
+                    <div><i style="background:#ffff00;"></i> Independent Alliance</div>
+                    <div><i style="background:#9b870c;"></i> Southern Lords</div>
+                    <div><i style="background:#800080;"></i> Contested</div>
+                    <div><i style="background:#cccccc;"></i> Unclaimed/Unknown</div>
+                </div>
+                 <div id="map-year-display">1495</div>
+            </div>
+
+            <div class="timeline-container">
+                <label for="year-slider">Year:</label>
+                <input type="range" id="year-slider" min="1495" max="2025" value="1495" step="1">
+                <span id="current-year">1495</span>
+                <div class="timeline-controls">
+                    <button id="play-pause-button">Play</button>
+                     <div class="speed-controls">
+                         Speed:
+                         <button data-speed="0.5">0.5x</button>
+                         <button data-speed="1" class="active">1x</button>
+                         <button data-speed="1.5">1.5x</button>
+                         <button data-speed="2">2x</button>
+                         <button data-speed="3">3x</button>
+                         <button data-speed="4">4x</button>
+                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+    // Define the strict bounds for the map (unchanged)
+    const southWestBound = L.latLng(22.4970361396, -98.034689445);
+    const northEastBound = L.latLng(40.0887528861, -69.9140855856);
+    const strictBounds = L.latLngBounds(southWestBound, northEastBound);
+
+    let initialZoom;
+
+    const map = L.map('map', {
+        maxBounds: strictBounds,
+        maxBoundsViscosity: 1.0
+    });
+
+    // Fit the map to the strict bounds initially
+    map.fitBounds(strictBounds);
+    initialZoom = map.getZoom();
+
+    map.setMinZoom(initialZoom);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 18,
+        attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>',
+        noWrap: true
+    }).addTo(map);
+
+    const sectColors = {
+        "Sabbat": "#ff0000",
+        "Camarilla": "#0000ff",
+        "Anarchs": "#00ff00",
+        "Independent Alliance": "#ffff00",
+        "Vodouists": "#ffa500",
+        "Southern Lords": "#9b870c",
+        "Contested": "#800080",
+        "Unclaimed": "#cccccc",
+        "Unknown": "#cccccc"
+    };
+
+    let timelineData = [];
+    let msaGeoJSON;
+
+    let msaLayer;
+    let pointLayer;
+    let animationInterval;
+    let isPlaying = false;
+    let groupedChangePoints = [];
+    let currentChangeGroupIndex = 0;
+    let leafletLayers = {};
+    let multiChangePopup = null;
+    let changesDisplayDiv;
+    let animationSpeed = 1;
+
+    function getSectAtYear(territoryTimeline, year) {
+        for (const period of territoryTimeline) {
+            if (year >= period.start && year <= period.end) {
+                return period.sect;
+            }
+        }
+        return "Unknown";
+    }
+
+    function generatePopupContent(territoryName, currentYear, showFullHistory = true) {
+        const territoryData = timelineData.find(t => t.name === territoryName);
+        if (!territoryData) return `<b>${territoryName}</b><br>Data not available.`;
+
+        const currentSect = getSectAtYear(territoryData.timeline, currentYear);
+        let content = `<b>${territoryName}</b><br>Current Sect (${currentYear}): ${currentSect}`;
+
+        if (showFullHistory) {
+            content += `<br><br>Timeline:<ul>`;
+            const historicalChanges = territoryData.timeline
+                .slice()
+                .sort((a, b) => a.start - b.start);
+
+            historicalChanges.forEach(period => {
+                content += `<li>Year ${period.start} - ${period.end}: ${period.description || "Control changes to " + period.sect}</li>`;
+            });
+            content += '</ul>';
+        } else {
+             const mostRecentChange = territoryData.timeline.slice().reverse().find(period => period.end < currentYear && period.start <= currentYear);
+             if (mostRecentChange) {
+                  content += "<br>" + (mostRecentChange.description || "Control changes to " + mostRecentChange.sect);
+             } else {
+                 const initialPeriod = territoryData.timeline.find(period => period.start <= currentYear && period.end >= currentYear);
+                 if (initialPeriod && initialPeriod.start === currentYear) {
+                     content += "<br>" + (initialPeriod.description || "Control starts as " + initialPeriod.sect);
+                 }
+             }
+        }
+
+        return content;
+    }
+
+    function stylePolygon(feature) {
+        const msaName = feature.properties.NAME;
+        const year = parseInt(document.getElementById('year-slider').value);
+
+        const territoryData = timelineData.find(t => t.name === msaName);
+
+        let sect = "Unknown";
+        if (territoryData) {
+            sect = getSectAtYear(territoryData.timeline, year);
+        }
+
+        return {
+            fillColor: sectColors[sect] || sectColors["Unknown"],
+            weight: 1,
+            opacity: 1,
+            color: 'white',
+            dashArray: '3',
+            fillOpacity: 0.7
+        };
+    }
+
+    function updateMap(year) {
+        document.getElementById('current-year').innerText = year;
+        document.getElementById('map-year-display').innerText = year;
+
+        // Remove existing layers
+        if (msaLayer) {
+            map.removeLayer(msaLayer);
+        }
+        if (pointLayer) {
+           map.removeLayer(pointLayer);
+        }
+        leafletLayers = {};
+
+        let boundsToFit = null;
+
+        // Add MSA polygon layer
+        if (msaGeoJSON && timelineData.length > 0) {
+             const filteredGeoJSON = {
+                 type: "FeatureCollection",
+                 features: msaGeoJSON.features.filter(feature =>
+                     timelineData.some(t => t.name === feature.properties.NAME)
+                 )
+             };
+
+            msaLayer = L.geoJson(filteredGeoJSON, {
+                style: stylePolygon,
+                onEachFeature: function (feature, layer) {
+                    const msaName = feature.properties.NAME;
+                    leafletLayers[msaName] = layer;
+
+                    layer.on('click', function() {
+                        if (isPlaying) {
+                            pauseTimeline();
+                        }
+                        const currentYear = parseInt(document.getElementById('year-slider').value);
+                        const popupContent = generatePopupContent(msaName, currentYear, true);
+                        displayContentInChangesDiv("<h4>" + msaName + "</h4>" + popupContent);
+                    });
+                }
+            }).addTo(map);
+
+            if (msaLayer.getBounds().isValid()) {
+                boundsToFit = msaLayer.getBounds();
+            }
+        }
+
+        // Add point layer (points are added, but not used for fitting bounds)
+        const points = timelineData.filter(t => t.isPoint);
+        pointLayer = L.layerGroup().addTo(map); // Always initialize pointLayer
+
+        if (points.length > 0) {
+            points.forEach(point => {
+                 const year = parseInt(document.getElementById('year-slider').value);
+                 const sect = getSectAtYear(point.timeline, year);
+                 const markerColor = sectColors[sect] || sectColors["Unknown"];
+
+                 const circleMarker = L.circleMarker(point.coords, {
+                     radius: 8,
+                     fillColor: markerColor,
+                     color: "#000",
+                     weight: 1,
+                     opacity: 1,
+                     fillOpacity: 0.8
+                 }).addTo(pointLayer);
+
+                 leafletLayers[point.name] = circleMarker;
+
+                 circleMarker.on('click', function() {
+                      if (isPlaying) {
+                          pauseTimeline();
+                      }
+                      const currentYear = parseInt(document.getElementById('year-slider').value);
+                      const popupContent = generatePopupContent(point.name, currentYear, true);
+                      displayContentInChangesDiv("<h4>" + point.name + "</h4>" + popupContent);
+                 });
+            });
+        }
+
+        // Fit map to bounds with error handling, only considering msaLayer bounds
+        try {
+            if (boundsToFit && boundsToFit.isValid()) {
+                map.fitBounds(boundsToFit);
+            } else {
+                // Fallback to strict bounds if no valid MSA polygon bounds
+                map.fitBounds(strictBounds);
+            }
+        } catch (error) {
+            console.error("Error fitting map bounds:", error);
+            // Fallback to strict bounds if fitting fails
+            try {
+                map.fitBounds(strictBounds);
+            } catch (fallbackError) {
+                console.error("Error fitting strict bounds as fallback:", fallbackError);
+            }
+        }
+    }
+
+    function playTimeline() {
+        const slider = document.getElementById('year-slider');
+        const playPauseButton = document.getElementById('play-pause-button');
+
+        if (!isPlaying) {
+            isPlaying = true;
+            playPauseButton.innerText = 'Pause';
+            if (parseInt(slider.value) === parseInt(slider.min)) {
+                 currentChangeGroupIndex = 0;
+            } else {
+                 currentChangeGroupIndex = groupedChangePoints.findIndex(group => group.year >= parseInt(slider.value));
+                 if (currentChangeGroupIndex === -1) {
+                     currentChangeGroupIndex = 0;
+                 }
+            }
+
+            processNextChangeGroup();
+        }
+    }
+
+    function processNextChangeGroup() {
+        hideMultiChangePopup();
+        map.closePopup();
+        clearChangesDisplayDiv();
+
+        if (currentChangeGroupIndex < groupedChangePoints.length) {
+            const changeGroup = groupedChangePoints[currentChangeGroupIndex];
+            const slider = document.getElementById('year-slider');
+
+            slider.value = changeGroup.year;
+            updateMap(changeGroup.year);
+
+            displayChangesInDiv(changeGroup);
+
+            animationInterval = setTimeout(() => {
+                currentChangeGroupIndex++;
+                processNextChangeGroup();
+            }, 1000 / animationSpeed);
+        } else {
+            pauseTimeline();
+            currentChangeGroupIndex = 0;
+        }
+    }
+
+    function pauseTimeline() {
+        isPlaying = false;
+        clearTimeout(animationInterval);
+        document.getElementById('play-pause-button').innerText = 'Play';
+        map.closePopup();
+        hideMultiChangePopup();
+        clearChangesDisplayDiv();
+    }
+
+    function generateGroupedChangePoints() {
+        const changes = [];
+        timelineData.forEach(territory => {
+            territory.timeline.forEach(period => {
+                 if (period.start >= 1495) {
+                     changes.push({
+                         year: period.start,
+                         territoryName: territory.name,
+                         sect: period.sect,
+                         description: period.description,
+                         isPoint: territory.isPoint,
+                         coords: territory.coords
+                     });
+                 }
+            });
+        });
+
+        changes.sort((a, b) => {
+            if (a.year !== b.year) {
+                return a.year - b.year;
+            }
+            return a.territoryName.localeCompare(b.territoryName);
+        });
+
+        const grouped = {};
+        changes.forEach(change => {
+            if (!grouped[change.year]) {
+                grouped[change.year] = [];
+            }
+            grouped[change.year].push(change);
+        });
+
+        groupedChangePoints = Object.keys(grouped).sort((a, b) => a - b).map(year => ({
+            year: parseInt(year),
+            changes: grouped[year]
+        }));
+
+         const filteredGroupedChanges = [];
+         let previousYearData = {};
+
+         groupedChangePoints.forEach(changeGroup => {
+             const changesInThisYear = [];
+             changeGroup.changes.forEach(change => {
+                 const territoryData = timelineData.find(t => t.name === change.territoryName);
+                 if (territoryData) {
+                     const previousPeriod = territoryData.timeline.slice().reverse().find(period => period.end < change.year);
+                     const previousSect = previousPeriod ? previousPeriod.sect : "Unknown";
+
+                     if (change.sect !== previousSect) {
+                         changesInThisYear.push(change);
+                     }
+                 }
+             });
+
+             if (changesInThisYear.length > 0) {
+                 filteredGroupedChanges.push({
+                     year: changeGroup.year,
+                     changes: changesInThisYear
+                 });
+             }
+
+             changesInThisYear.forEach(change => {
+                 previousYearData[change.territoryName] = change.sect;
+             });
+         });
+
+         groupedChangePoints = filteredGroupedChanges;
+    }
+
+    function showMultiChangePopup(changeGroup) {
+        hideMultiChangePopup();
+
+        multiChangePopup = document.createElement('div');
+        multiChangePopup.className = 'multi-change-popup';
+
+        let content = "<h4>Year " + changeGroup.year + " Changes:</h4><ul>";
+        changeGroup.changes.forEach(change => {
+            content += "<li><b>" + change.territoryName + ":</b> " + (change.description || "Control changes to " + change.sect) + "</li>";
+        });
+        content += '</ul>';
+
+        multiChangePopup.innerHTML = content;
+        document.getElementById('map').appendChild(multiChangePopup);
+    }
+
+    function hideMultiChangePopup() {
+        if (multiChangePopup) {
+            multiChangePopup.remove();
+            multiChangePopup = null;
+        }
+    }
+
+    function displayChangesInDiv(changeGroup) {
+        clearChangesDisplayDiv();
+
+        let content = "<h4>Year " + changeGroup.year + " Changes:</h4><ul>";
+        changeGroup.changes.forEach(change => {
+            content += "<li><b>" + change.territoryName + ":</b> " + (change.description || "Control changes to " + change.sect) + "</li>";
+        });
+        content += '</ul>';
+
+        changesDisplayDiv.innerHTML = content;
+        changesDisplayDiv.style.display = 'block';
+    }
+
+     function displayContentInChangesDiv(contentHtml) {
+        clearChangesDisplayDiv();
+        changesDisplayDiv.innerHTML = contentHtml;
+        changesDisplayDiv.style.display = 'block';
+     }
+
+    function clearChangesDisplayDiv() {
+        if (changesDisplayDiv) {
+            changesDisplayDiv.innerHTML = '';
+            changesDisplayDiv.style.display = 'none';
+        }
+    }
+
+    function loadTimelineData() {
+        fetch('vampire-timeline-data.json')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok ' + response.statusText);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data) {
+                    timelineData = data;
+                    console.log("Timeline data loaded successfully.");
+                    generateGroupedChangePoints();
+                    updateMap(parseInt(document.getElementById('year-slider').value));
+                }
+            })
+            .catch(error => {
+                console.error('Error loading timeline data:', error);
+                const errorDiv = document.createElement('div');
+                errorDiv.style.cssText = 'position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(255, 0, 0, 0.7); color: white; padding: 20px; border-radius: 10px; z-index: 1000;';
+                errorDiv.innerText = 'Error loading map data. Please check the connection.';
+                document.getElementById('map').appendChild(errorDiv);
+            });
+    }
+
+    map.on('move', () => {
+        map.closePopup();
+        hideMultiChangePopup();
+        clearChangesDisplayDiv();
+    });
+
+    map.on('zoom', () => {
+        map.closePopup();
+        hideMultiChangePopup();
+        clearChangesDisplayDiv();
+    });
+
+    fetch('https://unpkg.com/leaflet@1.9.4/dist/leaflet.js')
+        .then(() => {
+             fetch('https://raw.githubusercontent.com/loganpowell/census-geojson/master/GeoJSON/20m/2017/metropolitan-statistical-area!micropolitan-statistical-area.json')
+                .then(response => response.json())
+                .then(data => {
+                    msaGeoJSON = data;
+                    console.log("MSA GeoJSON loaded.");
+                    loadTimelineData();
+                })
+                .catch(error => {
+                    console.error('Error loading MSA GeoJSON:', error);
+                    const errorDiv = document.createElement('div');
+                    errorDiv.style.cssText = 'position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(255, 0, 0, 0.7); color: white; padding: 20px; border-radius: 10px; z-index: 1000;';
+                    errorDiv.innerText = 'Error loading map data. Please try again later.';
+                    document.getElementById('map').appendChild(errorDiv);
+                });
+        })
+        .catch(error => {
+             console.error('Error loading Leaflet:', error);
+             const errorDiv = document.createElement('div');
+             errorDiv.style.cssText = 'position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(255, 0, 0, 0.7); color: white; padding: 20px; border-radius: 10px; z-index: 1000;';
+             errorDiv.innerText = 'Error loading map library. Please try again later.';
+             document.getElementById('map').appendChild(errorDiv);
+        });
+
+    document.addEventListener('DOMContentLoaded', function() {
+        changesDisplayDiv = document.getElementById('changes-display');
+        const advancedOptionsButton = document.getElementById('advanced-options-button');
+        const advancedOptionsDiv = document.getElementById('advanced-options');
+        const speedButtons = document.querySelectorAll('.speed-controls button');
+        const timelineEditorButton = document.getElementById('timeline-editor-button');
+
+
+        advancedOptionsButton.addEventListener('click', function() {
+            const isHidden = advancedOptionsDiv.style.display === 'none' || advancedOptionsDiv.style.display === '';
+            advancedOptionsDiv.style.display = isHidden ? 'flex' : 'none';
+        });
+
+        speedButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                speedButtons.forEach(btn => btn.classList.remove('active'));
+                this.classList.remove('active'); // Remove active from previously active button
+                this.classList.add('active'); // Add active to the clicked button
+                animationSpeed = parseFloat(this.dataset.speed);
+                if (!isPlaying) {
+                    playTimeline();
+                }
+            });
+        });
+
+    });
+
+    document.getElementById('year-slider').addEventListener('input', function() {
+        if (isPlaying) {
+            pauseTimeline();
+        }
+
+        const currentYear = parseInt(this.value);
+        updateMap(currentYear);
+
+        map.closePopup();
+        hideMultiChangePopup();
+        clearChangesDisplayDiv();
+
+        const relevantChangeGroup = groupedChangePoints.slice().reverse().find(group => group.year <= currentYear);
+        if (relevantChangeGroup) {
+            displayChangesInDiv(relevantChangeGroup);
+        }
+    });
+
+    document.getElementById('play-pause-button').addEventListener('click', function() {
+        if (isPlaying) {
+            pauseTimeline();
+        } else {
+            playTimeline();
+        }
+    });
+
+    </script>
+
+</body>
+</html>
+

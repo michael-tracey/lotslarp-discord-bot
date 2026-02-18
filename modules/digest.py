@@ -1,9 +1,12 @@
 import discord
 import os
 import asyncio
+import logging
 from datetime import datetime, timedelta
 from modules import pdf_generator
-from modules.utils import smart_chunk_message
+from modules.utils import smart_chunk_message, compress_pdf
+
+logger = logging.getLogger(__name__)
 
 class Digest:
     def __init__(self, summary_module, gemini_model, pdf_gen, lore_manager=None):
@@ -15,6 +18,8 @@ class Digest:
         self.admin_role_name = os.environ.get("LOTSLARP_BOT_ADMIN_USER", "@storytellers").strip("@")
 
     async def run(self, client: discord.Client, message: discord.Message):
+        logger.info(f"Command started: /digest by {message.author} in {message.channel}")
+
         # Check Permissions
         has_permission = False
         if isinstance(message.author, discord.Member):
@@ -24,6 +29,7 @@ class Digest:
                     break
         
         if not has_permission:
+            logger.warning(f"Permission denied for {message.author}")
             await message.channel.send("🚫 You do not have permission to run this command.")
             return
 
@@ -44,13 +50,17 @@ class Digest:
             start_date = end_date - timedelta(days=30)
             date_range = f"Month of {start_date.strftime('%B %Y')}"
         
+        logger.info(f"Generating digest for timeframe: {timeframe} ({start_date} - {end_date})")
         await message.channel.send(f"Generating summary digest for the last {timeframe}...", suppress_embeds=True)
 
         # get_messages_since returns [channel_id, guild_id, author_name, message_content, message_url, doc_id, author_display_name, channel_name, timestamp]
         messages_data = await self.summary_module.get_messages_since(start_date)
         if not messages_data:
+            logger.info("No messages found for the specified timeframe.")
             await message.channel.send(f"No messages found for the last {timeframe}.")
             return
+
+        logger.info(f"Found {len(messages_data)} messages. Processing...")
 
         messages_for_pdf = []
         plain_text_for_summary = []
@@ -94,6 +104,7 @@ class Digest:
 
         executive_summary = ""
         if self.gemini_model:
+            logger.info("Generating AI summary...")
             try:
                 # RAG Integration
                 all_text = "\n".join(plain_text_for_summary)
@@ -103,7 +114,7 @@ class Digest:
                         lore_context = await self.lore_manager.get_relevant_lore(all_text)
                     except Exception as e:
                         # Log error but continue
-                        print(f"Error fetching lore: {e}")
+                        logger.error(f"Error fetching lore: {e}")
 
                 default_prompt = f"Please provide an executive summary of the following messages from the last {timeframe}:\n\n"
                 prompt_instructions = os.environ.get("LOTSLARP_DISCORD_BOT_GEMINI_PROMPT", default_prompt)
@@ -111,11 +122,14 @@ class Digest:
                 response = await self.gemini_model.generate_content_async(prompt)
                 executive_summary = response.text
             except Exception as e:
+                logger.error(f"Error generating summary: {e}", exc_info=True)
                 executive_summary = f"Error generating summary: {e}"
         else:
+            logger.warning("Gemini model not configured. Skipping AI summary.")
             executive_summary = "Gemini API not configured. Cannot generate summary."
 
         # Generate PDF
+        logger.info("Generating PDF...")
         pdf_title = f"{timeframe.capitalize()} Summary Digest"
         pdf_path = f"/tmp/summary_{timeframe}_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}.pdf"
         pdf_success = self.pdf_generator.create_digest_pdf(
@@ -128,6 +142,7 @@ class Digest:
         )
 
         if not pdf_success:
+            logger.error("PDF generation failed.")
             await message.channel.send("An error occurred while generating the PDF report.")
             return
 
@@ -157,6 +172,31 @@ class Digest:
 
         # Send PDF to channel with summary
         try:
+            logger.info(f"Sending digest to {message.channel.name}...")
+            
+            # Compress by default
+            DISCORD_LIMIT_BYTES = 10 * 1024 * 1024
+            logger.info(f"Optimizing PDF size for {pdf_path}...")
+            compressed_path = pdf_path.replace(".pdf", "_compressed.pdf")
+            
+            # Start with printer (300dpi)
+            if await compress_pdf(pdf_path, compressed_path, power=2):
+                pdf_path = compressed_path
+                # If still too large, try ebook (150dpi)
+                if os.path.getsize(pdf_path) > DISCORD_LIMIT_BYTES:
+                    ebook_path = pdf_path.replace(".pdf", "_ebook.pdf")
+                    if await compress_pdf(pdf_path, ebook_path, power=3):
+                        pdf_path = ebook_path
+                        # If still too large, try max (72dpi)
+                        if os.path.getsize(pdf_path) > DISCORD_LIMIT_BYTES:
+                            max_path = pdf_path.replace(".pdf", "_max.pdf")
+                            if await compress_pdf(pdf_path, max_path, power=4):
+                                pdf_path = max_path
+
+            file_size = os.path.getsize(pdf_path)
+            if file_size > DISCORD_LIMIT_BYTES:
+                await message.channel.send(f"⚠️ The PDF report is very large ({file_size/1024/1024:.2f} MB) and may fail to upload.")
+
             with open(pdf_path, "rb") as f:
                 pdf_file = discord.File(f, filename=os.path.basename(pdf_path))
                 
@@ -166,7 +206,9 @@ class Digest:
                     else:
                         await message.channel.send(chunk)
                         await asyncio.sleep(0.5)
+            logger.info("Digest sent successfully.")
         except Exception as e:
+            logger.error(f"Failed to send digest: {e}", exc_info=True)
             await message.channel.send(f"An error occurred while sending the PDF report: {e}")
         finally:
             # Clean up the generated PDF file

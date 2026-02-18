@@ -3,7 +3,8 @@ import logging
 import discord
 import asyncio
 from datetime import datetime, timedelta, timezone
-from modules.utils import smart_chunk_message, get_previous_game_date, get_date_of_weekday_in_month
+from google.cloud import firestore
+from modules.utils import smart_chunk_message, get_previous_game_date, get_date_of_weekday_in_month, compress_pdf
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +30,8 @@ class MonthlySummary:
         Logic: Summarizes from "Last Game" until Now.
         Usage: /summarize-month
         """
+        logger.info(f"Command started: /lotslarp report month by {message.author} in {message.channel}")
+
         # Check Permissions
         has_permission = False
         if isinstance(message.author, discord.Member):
@@ -38,6 +41,7 @@ class MonthlySummary:
                     break
         
         if not has_permission:
+            logger.warning(f"Permission denied for {message.author}")
             await message.channel.send("🚫 You do not have permission to run this command.")
             return
 
@@ -64,8 +68,11 @@ class MonthlySummary:
             0, 0, 0, tzinfo=timezone.utc
         )
         
+        logger.info(f"Calculated date range: {start_date} to {end_date}")
+        logger.info(f"Target digest channel ID: {self.digest_channel_id}")
+
         try:
-            await generate_and_send_summary(
+            result = await generate_and_send_summary(
                 client=client,
                 summary_module=self.summary_module,
                 gemini_model=self.gemini_model,
@@ -76,7 +83,14 @@ class MonthlySummary:
                 title="Monthly Game Cycle Summary (Manual)",
                 channel_id=self.digest_channel_id
             )
-            await message.add_reaction("✅")
+            if result:
+                await message.add_reaction("✅")
+                logger.info("Manual monthly summary completed successfully.")
+            else:
+                logger.warning("Manual monthly summary completed but returned False (likely no messages or configuration error).")
+                # Still marking as 'done' for the user, or maybe we should add a different emoji?
+                # Sticking to original behavior but logging it.
+                await message.add_reaction("✅") 
         except Exception as e:
             logger.error(f"Manual monthly summary failed: {e}", exc_info=True)
             await message.add_reaction("❌")
@@ -219,34 +233,26 @@ async def get_recent_monthly_summaries(firestore_client, current_end_date):
         
         # We need a synchronous wrapper for the query
         def _query_sync():
-            # Filter for documents with ID less than current_id (previous months)
-            # Order by ID descending to get the closest ones
-            # Limit to N
-            query = col_ref.where(filter=discord.utils.MISSING, field_path='__name__', op_string='<', value=current_id)\
-                           .order_by('__name__', direction=firestore_client.Query.DESCENDING)\
-                           .limit(limit)
-                           
-            # Note: Firestore python client filtering by __name__ (document ID) can be tricky.
-            # An alternative is to just get all (if few) or order by 'end_date' desc.
-            # Let's try ordering by 'end_date' desc where end_date < current_end_date
+            # Current report ID
+            current_id = current_end_date.strftime("%Y_%m")
             
-            q = col_ref.order_by('end_date', direction='DESCENDING').limit(limit + 1) # Get a few + current just in case
+            # Query for summaries where end_date < current_end_date
+            # We order by end_date descending to get the most recent ones first
+            q = col_ref.where(filter=firestore.FieldFilter('end_date', '<', current_end_date))\
+                       .order_by('end_date', direction=firestore.Query.DESCENDING)\
+                       .limit(limit)
+            
             docs = q.stream()
             
             results = []
             for doc in docs:
-                if doc.id == current_id:
-                    continue
                 d = doc.to_dict()
                 results.append(f"**Summary for {d.get('year')}-{d.get('month'):02d}:**\n{d.get('summary_text')}")
             
-            # We want the most recent ones (closest to now), which are at the front of the list (descending)
-            # Take the top N
-            most_recent = results[:limit]
-            
-            # Reverse to Chronological Order for the prompt
-            most_recent.reverse()
-            return most_recent
+            # results are already descending (newest first). 
+            # We reverse to provide them in chronological order to the AI.
+            results.reverse()
+            return results
 
         return await asyncio.to_thread(_query_sync)
 
@@ -262,8 +268,10 @@ async def generate_and_send_summary(client, summary_module, gemini_model, pdf_ge
     messages_data = await summary_module.get_messages_in_range(start_date, end_date)
     
     if not messages_data:
-        logger.info("No messages found in the specified range.")
-        return
+        logger.warning(f"No messages found in the specified range ({start_date} to {end_date}). Aborting.")
+        return False
+
+    logger.info(f"Found {len(messages_data)} messages. Processing...")
 
     # Process messages for PDF and AI
     messages_for_pdf = []
@@ -322,6 +330,7 @@ async def generate_and_send_summary(client, summary_module, gemini_model, pdf_ge
     # AI Summary
     executive_summary = ""
     if gemini_model:
+        logger.info("Generating AI summary...")
         def _generate_summary_sync(prompt):
             try:
                 response = gemini_model.generate_content(prompt)
@@ -351,7 +360,7 @@ async def generate_and_send_summary(client, summary_module, gemini_model, pdf_ge
             except Exception as e:
                 logger.error(f"Error fetching past summaries context: {e}")
 
-            default_prompt = "You are an AI assistant tasked with creating a high-level executive summary of Discord conversations. Analyze the following collection of messages and provide a concise summary. The summary should adhere to these rules: 1. Start with a one-sentence overview of the general topics discussed. 2. Use bullet points to highlight key decisions, action items, or significant points of interest. 3. Group related topics together under a common sub-heading if the conversation covers multiple distinct subjects. 4. Maintain a neutral, professional tone. 5. Do not invent or infer information that isn't present in the messages. 6. The summary should be no more than 4 paragraphs in total. Here are the messages to summarize:"
+            default_prompt = "You are an AI assistant tasked with creating a comprehensive executive summary of Discord conversations from the past month. Analyze the following collection of messages and provide a detailed summary. The summary should adhere to these rules: 1. Start with a one-sentence overview of the general topics discussed. 2. Use bullet points to highlight key decisions, action items, or significant points of interest. 3. Group related topics together under a common sub-heading if the conversation covers multiple distinct subjects. 4. Maintain a neutral, professional tone. 5. Do not invent or infer information that isn't present in the messages. 6. The summary should be approximately 6-8 paragraphs in total to reflect the large volume of activity. Here are the messages to summarize:"
             prompt_instructions = os.environ.get("LOTSLARP_DISCORD_BOT_MONTHLY_PROMPT", default_prompt)
             
             # Combine Contexts
@@ -367,8 +376,11 @@ async def generate_and_send_summary(client, summary_module, gemini_model, pdf_ge
         except Exception as e:
             logger.error(f"Summary thread error: {e}", exc_info=True)
             executive_summary = "Error: Summary generation process failed."
+    else:
+        logger.info("Gemini model not available. Skipping AI summary.")
 
     # Generate PDF
+    logger.info("Generating PDF...")
     date_str = datetime.now().strftime('%Y-%m-%d')
     pdf_filename = f"monthly_summary_{date_str}.pdf"
     pdf_path = f"/tmp/{pdf_filename}"
@@ -387,20 +399,44 @@ async def generate_and_send_summary(client, summary_module, gemini_model, pdf_ge
 
     if not pdf_success:
         logger.error("PDF generation failed.")
-        return
+        return False
 
     # Send
     channel = client.get_channel(channel_id)
     if not channel:
-        logger.error(f"Digest channel {channel_id} not found.")
-        return
+        logger.error(f"Digest channel {channel_id} not found/accessible. Cannot send summary.")
+        return False
 
     try:
+        # Compress by default
+        DISCORD_LIMIT_BYTES = 10 * 1024 * 1024
+        logger.info(f"Optimizing monthly PDF size...")
+        
+        compressed_path = pdf_path.replace(".pdf", "_compressed.pdf")
+        if await compress_pdf(pdf_path, compressed_path, power=2):
+            pdf_path = compressed_path
+            # If still too large, try ebook
+            if os.path.getsize(pdf_path) > DISCORD_LIMIT_BYTES:
+                ebook_path = pdf_path.replace(".pdf", "_ebook.pdf")
+                if await compress_pdf(pdf_path, ebook_path, power=3):
+                    pdf_path = ebook_path
+                    # If still too large, try max
+                    if os.path.getsize(pdf_path) > DISCORD_LIMIT_BYTES:
+                        max_path = pdf_path.replace(".pdf", "_max.pdf")
+                        if await compress_pdf(pdf_path, max_path, power=4):
+                            pdf_path = max_path
+
+        file_size = os.path.getsize(pdf_path)
+        
+        logger.info(f"Sending summary to channel {channel.name} ({channel.id})...")
         discord_message = f"**{title}**\n\n"
         discord_message += f"**Period:** {date_range_str}\n\n"
         discord_message += "**Storyteller Recap:**\n"
         discord_message += executive_summary + "\n"
         
+        if file_size > DISCORD_LIMIT_BYTES:
+             discord_message += f"\n⚠️ **Note:** The PDF report is very large ({file_size/1024/1024:.2f} MB) and may fail to upload."
+
         chunks = smart_chunk_message(discord_message, 1950)
 
         with open(pdf_path, "rb") as f:
@@ -413,10 +449,12 @@ async def generate_and_send_summary(client, summary_module, gemini_model, pdf_ge
                     await channel.send(content=chunk)
                     await asyncio.sleep(0.5)
         
-        logger.info(f"Monthly summary sent to {channel.name}.")
+        logger.info(f"Monthly summary successfully sent to {channel.name}.")
+        return True
         
     except Exception as e:
         logger.error(f"Failed to send monthly summary: {e}", exc_info=True)
+        return False
     finally:
         if os.path.exists(pdf_path):
             os.remove(pdf_path)

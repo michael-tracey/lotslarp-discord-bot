@@ -1,5 +1,8 @@
 import discord
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 class LotslarpHelp:
     def __init__(self):
@@ -11,6 +14,8 @@ class LotslarpHelp:
         Lists available commands based on user permissions.
         Usage: /lotslarp-help
         """
+        logger.info(f"Command started: /lotslarp help by {message.author} in {message.channel}")
+
         is_admin = False
         if isinstance(message.author, discord.Member):
             for role in message.author.roles:
@@ -28,6 +33,7 @@ class LotslarpHelp:
         public_cmds = [
             "**/lotslarp help**: Show this help message.",
             "**/lotslarp hello**: Say hello to the bot.",
+            "**/lotslarp map**: Get the link to the interactive sect map.",
             "**/throw <object>**: For when you need to toss something.",
             "**/huh <question>**: Ask the bot questions about the LARP or rules."
         ]
@@ -51,6 +57,9 @@ class LotslarpHelp:
             
             embed.set_footer(text="Tip: Mentions of the summary role are used to track where reports leave off.")
 
-        
-        await message.channel.send(embed=embed)
+        try:
+            await message.channel.send(embed=embed)
+            logger.info("Help message sent successfully.")
+        except Exception as e:
+            logger.error(f"Failed to send help message: {e}", exc_info=True)
 

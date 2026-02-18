@@ -1,0 +1,4246 @@
+[
+  {
+    "name": "Albany, GA",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1811,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1812,
+        "end": 1861,
+        "sect": "Southern Lords",
+        "description": "Under Southern Lords influence."
+      },
+      {
+        "start": 1861,
+        "end": 1865,
+        "sect": "Contested",
+        "description": "Civil War period - Contested."
+      },
+      {
+        "start": 1865,
+        "end": 1930,
+        "sect": "Unknown",
+        "description": "Post-Civil War period - Status Unknown."
+      },
+      {
+        "start": 1931,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Camarilla influence established."
+      }
+    ]
+  },
+  {
+    "name": "Alexandria, LA",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1806,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1807,
+        "end": 1861,
+        "sect": "Southern Lords",
+        "description": "Under Southern Lords influence."
+      },
+      {
+        "start": 1861,
+        "end": 1865,
+        "sect": "Contested",
+        "description": "Civil War period - Contested."
+      },
+      {
+        "start": 1865,
+        "end": 1930,
+        "sect": "Unknown",
+        "description": "Post-Civil War period - Status Unknown."
+      },
+      {
+        "start": 1931,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Camarilla influence established."
+      }
+    ]
+  },
+  {
+    "name": "Allentown-Bethlehem-Easton, PA-NJ",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1772,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1773,
+        "end": 1997,
+        "sect": "Camarilla",
+        "description": "Camarilla influence spreads inland."
+      },
+      {
+        "start": 1998,
+        "end": 2003,
+        "sect": "Sabbat",
+        "description": "Fell to Sabbat Crusade."
+      },
+      {
+        "start": 2004,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Camarilla pushes back, regains control."
+      }
+    ]
+  },
+  {
+    "name": "Anniston-Oxford-Jacksonville, AL",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1811,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1812,
+        "end": 1861,
+        "sect": "Southern Lords",
+        "description": "Under Southern Lords influence."
+      },
+      {
+        "start": 1861,
+        "end": 1865,
+        "sect": "Contested",
+        "description": "Civil War period - Contested."
+      },
+      {
+        "start": 1865,
+        "end": 1930,
+        "sect": "Unknown",
+        "description": "Post-Civil War period - Status Unknown."
+      },
+      {
+        "start": 1931,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Camarilla influence established."
+      }
+    ]
+  },
+  {
+    "name": "Asheville, NC",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1888,
+        "sect": "Unknown",
+        "description": "Little Kindred Influence\n\nTruly the wilds, home to the Garou and the Fae, the Blue Ridge was avoided by all but the most brave Kindred. The railroads further north or south provided safer travel and protection to those who dwell in the night seeking passage West."
+      },
+      {
+        "start": 1888,
+        "end": 1914,
+        "sect": "Camarilla",
+        "description": "1888 - Kindred Involvement accelerates\n\nGeorge Vanderbilt decides to begin purchasing his 12,500 acre estate, assisting both Pentex and vampires who each seek to gain a foothold in the Land of the Sky. The Ventrue Elder Evander uses this opportunity to settle in the region and benefit from the wealth being generated and make his mark on the nascent expansion of the region."
+      },
+      {
+        "start": 1914,
+        "end": 1991,
+        "sect": "Sabbat",
+        "description": "Evander's youngest childe, E. W. Grove, famously betrays his sire to the Sabbat and the domain falls. Evander is destroyed, and Tallula Donegan declares Asheville won for the Sword of Caine. She receives the bloodbath and ascends to Archbishop of Southern Appalachia."
+      },
+      {
+        "start": 1991,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "The Treaty of the Land of the Sky returns the domain to the Camarilla For reasons that remain mysterious, Archbishop Tallula renounces the Sabbat and becomes the domain's Prince as part of the Camarilla. Many Sabbat rise against her, meeting their final death that fateful October night. Outlying towns such as Black Mountain and Waynesville remain home to Sabbat packs to this day. This treaty is overseen by the domain's new Tremere liaison Elder Volshebnik who, despite threats of diablerie, proves to be here to stay. The Basilica of St. Lawrence is established as an Elysium."
+      }
+    ]
+  },
+  {
+    "name": "Atlanta-Sandy Springs-Roswell, GA",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1811,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1812,
+        "end": 1861,
+        "sect": "Southern Lords",
+        "description": "Influence of the Southern Lords grows."
+      },
+      {
+        "start": 1861,
+        "end": 1864,
+        "sect": "Contested",
+        "description": "Civil War period - Contested."
+      },
+      {
+        "start": 1864,
+        "end": 1990,
+        "sect": "Camarilla",
+        "description": "Union forces capture Atlanta (September 1, 1864). Post-Civil War: Ventrue and allies (incl. Gen. Johnston) claim domain. Justicar Ignatus retakes city."
+      },
+      {
+        "start": 1990,
+        "end": 2025,
+        "sect": "Sabbat",
+        "description": "Sabbat Crusade conquers Atlanta, settled into Sabbat control as capital of the South."
+      }
+    ]
+  },
+  {
+    "name": "Auburn-Opelika, AL",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1811,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1812,
+        "end": 1861,
+        "sect": "Southern Lords",
+        "description": "Under Southern Lords influence."
+      },
+      {
+        "start": 1861,
+        "end": 1865,
+        "sect": "Contested",
+        "description": "Civil War period - Contested."
+      },
+      {
+        "start": 1865,
+        "end": 1930,
+        "sect": "Unknown",
+        "description": "Post-Civil War period - Status Unknown."
+      },
+      {
+        "start": 1931,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Camarilla influence established."
+      }
+    ]
+  },
+  {
+    "name": "Augusta-Richmond County, GA-SC",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1795,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1796,
+        "end": 1861,
+        "sect": "Southern Lords",
+        "description": "Under Southern Lords influence."
+      },
+      {
+        "start": 1861,
+        "end": 1865,
+        "sect": "Contested",
+        "description": "Civil War period - Contested."
+      },
+      {
+        "start": 1865,
+        "end": 2000,
+        "sect": "Camarilla",
+        "description": "Post-Civil War period - Camarilla influence established."
+      },
+      {
+        "start": 2000,
+        "end": 2025,
+        "sect": "Sabbat",
+        "description": "Taken over by Swift, a Sabbat Gangrel."
+      }
+    ]
+  },
+  {
+    "name": "Austin-Round Rock, TX",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1906,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1906,
+        "end": 1992,
+        "sect": "Sabbat",
+        "description": "Falls under Sabbat influence."
+      },
+      {
+        "start": 1993,
+        "end": 2002,
+        "sect": "Contested",
+        "description": "Contested due to Camarilla pressure."
+      },
+      {
+        "start": 2003,
+        "end": 2025,
+        "sect": "Anarchs",
+        "description": "Flips to Anarch control."
+      }
+    ]
+  },
+  {
+    "name": "Baltimore-Columbia-Towson, MD",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1650,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1651,
+        "end": 1990,
+        "sect": "Camarilla",
+        "description": "Camarilla influence established on the coast, spreads inland."
+      },
+      {
+        "start": 1990,
+        "end": 2000,
+        "sect": "Sabbat",
+        "description": "Fell to Sabbat Crusade."
+      },
+      {
+        "start": 2001,
+        "end": 2025,
+        "sect": "Contested",
+        "description": "Camarilla pushes back, Sabbat has upper hand, contested."
+      }
+    ]
+  },
+  {
+    "name": "Baton Rouge, LA",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1808,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1809,
+        "end": 1861,
+        "sect": "Southern Lords",
+        "description": "Under Southern Lords influence."
+      },
+      {
+        "start": 1861,
+        "end": 1865,
+        "sect": "Contested",
+        "description": "Civil War period - Contested."
+      },
+      {
+        "start": 1865,
+        "end": 1930,
+        "sect": "Camarilla",
+        "description": "Post-Civil War period - Camarilla influence established."
+      },
+      {
+        "start": 1931,
+        "end": 1950,
+        "sect": "Anarchs",
+        "description": "Brief Anarch control."
+      },
+      {
+        "start": 1951,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Camarilla regains control."
+      }
+    ]
+  },
+  {
+    "name": "Bay City, TX",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1930,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1931,
+        "end": 1985,
+        "sect": "Sabbat",
+        "description": "Falls under Sabbat influence."
+      },
+      {
+        "start": 1986,
+        "end": 1995,
+        "sect": "Camarilla",
+        "description": "Brief Camarilla control."
+      },
+      {
+        "start": 1996,
+        "end": 2025,
+        "sect": "Contested",
+        "description": "Contested on the Texas border."
+      }
+    ]
+  },
+  {
+    "name": "Beaumont-Port Arthur, TX",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1913,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1913,
+        "end": 1995,
+        "sect": "Sabbat",
+        "description": "Falls under Sabbat influence spreading north from Mexico."
+      },
+      {
+        "start": 1996,
+        "end": 2005,
+        "sect": "Camarilla",
+        "description": "Brief Camarilla control."
+      },
+      {
+        "start": 2006,
+        "end": 2025,
+        "sect": "Sabbat",
+        "description": "Sabbat regains control."
+      }
+    ]
+  },
+  {
+    "name": "Birmingham-Hoover, AL",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1811,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1812,
+        "end": 1861,
+        "sect": "Southern Lords",
+        "description": "Under Southern Lords influence."
+      },
+      {
+        "start": 1861,
+        "end": 1865,
+        "sect": "Contested",
+        "description": "Civil War period - Contested."
+      },
+      {
+        "start": 1865,
+        "end": 1990,
+        "sect": "Camarilla",
+        "description": "Post-Civil War period - Camarilla influence established."
+      },
+      {
+        "start": 1990,
+        "end": 1995,
+        "sect": "Camarilla",
+        "description": "New Malkavian Prince takes control after coup (sect unclear initially)."
+      },
+      {
+        "start": 1995,
+        "end": 2005,
+        "sect": "Sabbat",
+        "description": "Fell to Sabbat Crusade."
+      },
+      {
+        "start": 2005,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Retaken by Camarilla, now target for Sabbat siege."
+      }
+    ]
+  },
+  {
+    "name": "Bowling Green, KY",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1875,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1875,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Camarilla influence established."
+      }
+    ]
+  },
+  {
+    "name": "Brunswick, GA",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1770,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1771,
+        "end": 1811,
+        "sect": "Camarilla",
+        "description": "Camarilla influence from the coast."
+      },
+      {
+        "start": 1812,
+        "end": 1861,
+        "sect": "Southern Lords",
+        "description": "Under Southern Lords influence."
+      },
+      {
+        "start": 1861,
+        "end": 1865,
+        "sect": "Contested",
+        "description": "Civil War period - Contested."
+      },
+      {
+        "start": 1865,
+        "end": 1930,
+        "sect": "Camarilla",
+        "description": "Post-Civil War period - Camarilla influence established."
+      },
+      {
+        "start": 1931,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Camarilla influence established."
+      }
+    ]
+  },
+  {
+    "name": "Cape Coral-Fort Myers, FL",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1560,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1561,
+        "end": 2013,
+        "sect": "Sabbat",
+        "description": "Early Sabbat entrenchment in Spanish colonies."
+      },
+      {
+        "start": 2014,
+        "end": 2025,
+        "sect": "Independent Alliance",
+        "description": "Falls under Independent Alliance influence."
+      }
+    ]
+  },
+  {
+    "name": "Charleston-North Charleston, SC",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1705,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1706,
+        "end": 1780,
+        "sect": "Camarilla",
+        "description": "Early Camarilla influence from the coast."
+      },
+      {
+        "start": 1781,
+        "end": 1861,
+        "sect": "Southern Lords",
+        "description": "Under Southern Lords influence."
+      },
+      {
+        "start": 1861,
+        "end": 1865,
+        "sect": "Contested",
+        "description": "Civil War period - Contested."
+      },
+      {
+        "start": 1865,
+        "end": 1990,
+        "sect": "Camarilla",
+        "description": "Union forces capture Charleston (February 18, 1865). Post-Civil War: Camarilla control established."
+      },
+      {
+        "start": 1990,
+        "end": 2025,
+        "sect": "Sabbat",
+        "description": "Fell to Sabbat Crusade, later settled into Sabbat control."
+      }
+    ]
+  },
+  {
+    "name": "Charleston, WV",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1930,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1931,
+        "end": 2006,
+        "sect": "Camarilla",
+        "description": "Camarilla influence established."
+      },
+      {
+        "start": 2007,
+        "end": 2025,
+        "sect": "Anarchs",
+        "description": "Part of the Appalachian Anarch range."
+      }
+    ]
+  },
+  {
+    "name": "Charlotte-Concord-Gastonia, NC-SC",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1790,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1791,
+        "end": 1811,
+        "sect": "Camarilla",
+        "description": "Camarilla influence spreads inland."
+      },
+      {
+        "start": 1812,
+        "end": 1861,
+        "sect": "Southern Lords",
+        "description": "Influence of the Southern Lords grows."
+      },
+      {
+        "start": 1861,
+        "end": 1865,
+        "sect": "Contested",
+        "description": "Civil War period - Contested."
+      },
+      {
+        "start": 1865,
+        "end": 1999,
+        "sect": "Camarilla",
+        "description": "Post-Civil War period - Camarilla influence established, Held by Prince Ginevra Bellecourt."
+      },
+      {
+        "start": 1999,
+        "end": 2000,
+        "sect": "Sabbat",
+        "description": "Fell to Sabbat Crusade, Bellecourt never disbanded or left the city, ruling a Prince from the resistance underground."
+      },
+      {
+        "start": 2001,
+        "end": 2023,
+        "sect": "Camarilla",
+        "description": "Camarilla pushes back, and Prince Ginevra Bellecourt succeeds in recovering her Praxis."
+      }
+    ]
+  },
+  {
+    "name": "Chattanooga, TN-GA",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1930,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1931,
+        "end": 2004,
+        "sect": "Camarilla",
+        "description": "Camarilla influence established."
+      },
+      {
+        "start": 2005,
+        "end": 2025,
+        "sect": "Anarchs",
+        "description": "Part of the Appalachian Anarch range."
+      }
+    ]
+  },
+  {
+    "name": "Cincinnati, OH-KY-IN",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1810,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1811,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Camarilla influence spreads inland."
+      }
+    ]
+  },
+  {
+    "name": "Clarksville, TN-KY",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1930,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1931,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Camarilla influence established."
+      }
+    ]
+  },
+  {
+    "name": "College Station-Bryan, TX",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1908,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1908,
+        "end": 1994,
+        "sect": "Sabbat",
+        "description": "Falls under Sabbat influence."
+      },
+      {
+        "start": 1995,
+        "end": 2004,
+        "sect": "Camarilla",
+        "description": "Brief Camarilla control."
+      },
+      {
+        "start": 2005,
+        "end": 2025,
+        "sect": "Sabbat",
+        "description": "Sabbat regains control."
+      }
+    ]
+  },
+  {
+    "name": "Columbia, SC",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1790,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1791,
+        "end": 1861,
+        "sect": "Southern Lords",
+        "description": "Under Southern Lords influence."
+      },
+      {
+        "start": 1861,
+        "end": 1865,
+        "sect": "Contested",
+        "description": "Civil War period - Contested."
+      },
+      {
+        "start": 1865,
+        "end": 1930,
+        "sect": "Camarilla",
+        "description": "Union forces sack Columbia (February 17, 1865). Post-Civil War period - Camarilla influence established."
+      },
+      {
+        "start": 1931,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Camarilla influence established."
+      }
+    ]
+  },
+  {
+    "name": "Columbus, GA-AL",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1811,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1812,
+        "end": 1861,
+        "sect": "Southern Lords",
+        "description": "Under Southern Lords influence."
+      },
+      {
+        "start": 1861,
+        "end": 1865,
+        "sect": "Contested",
+        "description": "Civil War period - Contested."
+      },
+      {
+        "start": 1865,
+        "end": 1930,
+        "sect": "Unknown",
+        "description": "Post-Civil War period - Status Unknown."
+      },
+      {
+        "start": 1931,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Camarilla influence established."
+      }
+    ]
+  },
+  {
+    "name": "Corpus Christi, TX",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1804,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1804,
+        "end": 1999,
+        "sect": "Sabbat",
+        "description": "Falls under Sabbat influence."
+      },
+      {
+        "start": 1999,
+        "end": 2025,
+        "sect": "Contested",
+        "description": "Contested on the Texas border, after Crusade push back from the Camarilla"
+      }
+    ]
+  },
+  {
+    "name": "Dallas-Fort Worth-Arlington, TX",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1912,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1912,
+        "end": 1998,
+        "sect": "Sabbat",
+        "description": "Falls under Sabbat influence spreading north from Mexico."
+      },
+      {
+        "start": 1999,
+        "end": 2008,
+        "sect": "Contested",
+        "description": "Contested due to Camarilla pressure."
+      },
+      {
+        "start": 2009,
+        "end": 2025,
+        "sect": "Contested",
+        "description": "Status Unknown (Listed in Notable Domains table), likely contested."
+      }
+    ]
+  },
+  {
+    "name": "Dalton, GA",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1930,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1931,
+        "end": 2004,
+        "sect": "Camarilla",
+        "description": "Camarilla influence established."
+      },
+      {
+        "start": 2005,
+        "end": 2025,
+        "sect": "Anarchs",
+        "description": "Part of the Appalachian Anarch range."
+      }
+    ]
+  },
+  {
+    "name": "Deltona-Daytona Beach-Ormond Beach, FL",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1565,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1566,
+        "end": 2015,
+        "sect": "Sabbat",
+        "description": "Early Sabbat entrenchment in Spanish colonies."
+      },
+      {
+        "start": 2016,
+        "end": 2025,
+        "sect": "Independent Alliance",
+        "description": "Falls under Independent Alliance influence."
+      }
+    ]
+  },
+  {
+    "name": "Dothan, AL",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1811,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1812,
+        "end": 1861,
+        "sect": "Southern Lords",
+        "description": "Under Southern Lords influence."
+      },
+      {
+        "start": 1861,
+        "end": 1865,
+        "sect": "Contested",
+        "description": "Civil War period - Contested."
+      },
+      {
+        "start": 1865,
+        "end": 1998,
+        "sect": "Camarilla",
+        "description": "Post-Civil War period - Status Camrilla Controled"
+      },
+      {
+        "start": 1998,
+        "end": 2000,
+        "sect": "Sabbat",
+        "description": "Camarilla influence established."
+      },
+      {
+        "start": 2000,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Camarilla influence restablished."
+      }
+    ]
+  },
+  {
+    "name": "Dover, DE",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1670,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1671,
+        "end": 1997,
+        "sect": "Camarilla",
+        "description": "Camarilla influence spreads inland."
+      },
+      {
+        "start": 1998,
+        "end": 2003,
+        "sect": "Sabbat",
+        "description": "Fell to Sabbat Crusade."
+      },
+      {
+        "start": 2004,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Camarilla pushes back, regains control."
+      }
+    ]
+  },
+  {
+    "name": "Durham-Chapel Hill, NC",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1800,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1801,
+        "end": 1811,
+        "sect": "Camarilla",
+        "description": "Camarilla influence spreads inland."
+      },
+      {
+        "start": 1812,
+        "end": 1861,
+        "sect": "Southern Lords",
+        "description": "Influence of the Southern Lords grows."
+      },
+      {
+        "start": 1861,
+        "end": 1865,
+        "sect": "Contested",
+        "description": "Civil War period - Contested."
+      },
+      {
+        "start": 1865,
+        "end": 1999,
+        "sect": "Camarilla",
+        "description": "Post-Civil War period - Camarilla influence established."
+      },
+      {
+        "start": 1999,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Part of The Triangle domain under Prince Malphas."
+      }
+    ]
+  },
+  {
+    "name": "Fayetteville, NC",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1788,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1789,
+        "end": 1861,
+        "sect": "Southern Lords",
+        "description": "Under Southern Lords influence."
+      },
+      {
+        "start": 1861,
+        "end": 1865,
+        "sect": "Contested",
+        "description": "Civil War period - Contested."
+      },
+      {
+        "start": 1865,
+        "end": 1930,
+        "sect": "Camarilla",
+        "description": "Post-Civil War period - Camarilla influence established."
+      },
+      {
+        "start": 1931,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Camarilla influence established."
+      }
+    ]
+  },
+  {
+    "name": "Florence-Muscle Shoals, AL",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1811,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1812,
+        "end": 1861,
+        "sect": "Southern Lords",
+        "description": "Under Southern Lords influence."
+      },
+      {
+        "start": 1861,
+        "end": 1865,
+        "sect": "Contested",
+        "description": "Civil War period - Contested."
+      },
+      {
+        "start": 1865,
+        "end": 1930,
+        "sect": "Camarilla",
+        "description": "Post-Civil War period - Camarilla influence established."
+      },
+      {
+        "start": 1931,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Camarilla influence established."
+      }
+    ]
+  },
+  {
+    "name": "Florence, SC",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1802,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1803,
+        "end": 1861,
+        "sect": "Southern Lords",
+        "description": "Under Southern Lords influence."
+      },
+      {
+        "start": 1861,
+        "end": 1865,
+        "sect": "Contested",
+        "description": "Civil War period - Contested."
+      },
+      {
+        "start": 1865,
+        "end": 1930,
+        "sect": "Unknown",
+        "description": "Post-Civil War period - Status Unknown."
+      },
+      {
+        "start": 1931,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Camarilla influence established."
+      }
+    ]
+  },
+  {
+    "name": "Gadsden, AL",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1811,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1812,
+        "end": 1861,
+        "sect": "Southern Lords",
+        "description": "Under Southern Lords influence."
+      },
+      {
+        "start": 1861,
+        "end": 1865,
+        "sect": "Contested",
+        "description": "Civil War period - Contested."
+      },
+      {
+        "start": 1865,
+        "end": 1930,
+        "sect": "Unknown",
+        "description": "Post-Civil War period - Status Unknown."
+      },
+      {
+        "start": 1931,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Camarilla influence established."
+      }
+    ]
+  },
+  {
+    "name": "Gainesville, FL",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1555,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1556,
+        "end": 2011,
+        "sect": "Sabbat",
+        "description": "Early Sabbat entrenchment in Spanish colonies."
+      },
+      {
+        "start": 2012,
+        "end": 2025,
+        "sect": "Independent Alliance",
+        "description": "Falls under Independent Alliance influence."
+      }
+    ]
+  },
+  {
+    "name": "Greenville, NC",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1792,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1793,
+        "end": 1861,
+        "sect": "Southern Lords",
+        "description": "Under Southern Lords influence."
+      },
+      {
+        "start": 1861,
+        "end": 1865,
+        "sect": "Contested",
+        "description": "Civil War period - Contested."
+      },
+      {
+        "start": 1865,
+        "end": 1930,
+        "sect": "Camarilla",
+        "description": "Post-Civil War period - Camarilla influence established."
+      },
+      {
+        "start": 1931,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Camarilla influence established."
+      }
+    ]
+  },
+  {
+    "name": "Greenville-Anderson-Mauldin, SC",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1775,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1776,
+        "end": 1861,
+        "sect": "Southern Lords",
+        "description": "Under Southern Lords influence."
+      },
+      {
+        "start": 1861,
+        "end": 1865,
+        "sect": "Contested",
+        "description": "Civil War period - Contested."
+      },
+      {
+        "start": 1865,
+        "end": 1995,
+        "sect": "Camarilla",
+        "description": "Post-Civil War period - Camarilla influence established."
+      },
+      {
+        "start": 1996,
+        "end": 2025,
+        "sect": "Sabbat",
+        "description": "Fell to Sabbat Crusade."
+      }
+    ]
+  },
+  {
+    "name": "Greensboro-High Point, NC",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1805,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1806,
+        "end": 1861,
+        "sect": "Southern Lords",
+        "description": "Under Southern Lords influence."
+      },
+      {
+        "start": 1861,
+        "end": 1865,
+        "sect": "Contested",
+        "description": "Civil War period - Contested."
+      },
+      {
+        "start": 1865,
+        "end": 2012,
+        "sect": "Camarilla",
+        "description": "Post-Civil War period - Camarilla influence established."
+      },
+      {
+        "start": 2012,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Prince Ransom (Brujah) takes Praxis (Shadow Camarilla government, heavy Giovanni presence)."
+      }
+    ]
+  },
+  {
+    "name": "Gulfport-Biloxi, MS",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1795,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1796,
+        "end": 1861,
+        "sect": "Southern Lords",
+        "description": "Under Southern Lords influence."
+      },
+      {
+        "start": 1861,
+        "end": 1865,
+        "sect": "Contested",
+        "description": "Civil War period - Contested."
+      },
+      {
+        "start": 1865,
+        "end": 1930,
+        "sect": "Unknown",
+        "description": "Post-Civil War period - Status Unknown."
+      },
+      {
+        "start": 1931,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Camarilla influence established."
+      }
+    ]
+  },
+  {
+    "name": "Hagerstown-Martinsburg, MD-WV",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1680,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1681,
+        "end": 2004,
+        "sect": "Camarilla",
+        "description": "Camarilla influence spreads inland."
+      },
+      {
+        "start": 2005,
+        "end": 2025,
+        "sect": "Anarchs",
+        "description": "Part of the Appalachian Anarch range."
+      }
+    ]
+  },
+  {
+    "name": "Harrisburg-Carlisle, PA",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1780,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1781,
+        "end": 1997,
+        "sect": "Camarilla",
+        "description": "Camarilla influence spreads inland."
+      },
+      {
+        "start": 1998,
+        "end": 2003,
+        "sect": "Sabbat",
+        "description": "Fell to Sabbat Crusade."
+      },
+      {
+        "start": 2004,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Camarilla pushes back, regains control."
+      }
+    ]
+  },
+  {
+    "name": "Hattiesburg, MS",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1808,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1809,
+        "end": 1861,
+        "sect": "Southern Lords",
+        "description": "Under Southern Lords influence."
+      },
+      {
+        "start": 1861,
+        "end": 1865,
+        "sect": "Contested",
+        "description": "Civil War period - Contested."
+      },
+      {
+        "start": 1865,
+        "end": 1930,
+        "sect": "Unknown",
+        "description": "Post-Civil War period - Status Unknown."
+      },
+      {
+        "start": 1931,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Camarilla influence established."
+      }
+    ]
+  },
+  {
+    "name": "Hilton Head Island-Bluffton-Beaufort, SC",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1765,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1766,
+        "end": 1861,
+        "sect": "Southern Lords",
+        "description": "Under Southern Lords influence."
+      },
+      {
+        "start": 1861,
+        "end": 1865,
+        "sect": "Contested",
+        "description": "Civil War period - Contested."
+      },
+      {
+        "start": 1865,
+        "end": 1930,
+        "sect": "Unknown",
+        "description": "Post-Civil War period - Status Unknown."
+      },
+      {
+        "start": 1931,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Camarilla influence established."
+      }
+    ]
+  },
+  {
+    "name": "Hot Springs, AR",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1811,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1812,
+        "end": 1861,
+        "sect": "Southern Lords",
+        "description": "Under Southern Lords influence."
+      },
+      {
+        "start": 1861,
+        "end": 1865,
+        "sect": "Contested",
+        "description": "Civil War period - Contested."
+      },
+      {
+        "start": 1865,
+        "end": 1930,
+        "sect": "Unknown",
+        "description": "Post-Civil War period - Status Unknown."
+      },
+      {
+        "start": 1931,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Camarilla influence established."
+      }
+    ]
+  },
+  {
+    "name": "Houston-The Woodlands-Sugar Land, TX",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1912,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1912,
+        "end": 1995,
+        "sect": "Sabbat",
+        "description": "Falls under Sabbat influence spreading north from Mexico."
+      },
+      {
+        "start": 1996,
+        "end": 2005,
+        "sect": "Contested",
+        "description": "Contested due to Camarilla pressure."
+      },
+      {
+        "start": 2006,
+        "end": 2025,
+        "sect": "Sabbat",
+        "description": "Sabbat regains firm control."
+      }
+    ]
+  },
+  {
+    "name": "Huntington-Ashland, WV-KY-OH",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1930,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1931,
+        "end": 2007,
+        "sect": "Camarilla",
+        "description": "Camarilla influence established."
+      },
+      {
+        "start": 2008,
+        "end": 2025,
+        "sect": "Anarchs",
+        "description": "Part of the Appalachian Anarch range."
+      }
+    ]
+  },
+  {
+    "name": "Huntsville, AL",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1800,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1801,
+        "end": 1861,
+        "sect": "Southern Lords",
+        "description": "Under Southern Lords influence."
+      },
+      {
+        "start": 1861,
+        "end": 1865,
+        "sect": "Contested",
+        "description": "Civil War period - Contested."
+      },
+      {
+        "start": 1865,
+        "end": 1930,
+        "sect": "Camarilla",
+        "description": "Post-Civil War period - Camarilla influence established."
+      },
+      {
+        "start": 1931,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Camarilla influence established."
+      }
+    ]
+  },
+  {
+    "name": "Indianapolis-Carmel-Anderson, IN",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1815,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1816,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Camarilla influence spreads inland."
+      }
+    ]
+  },
+  {
+    "name": "Jackson, MS",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1805,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1806,
+        "end": 1861,
+        "sect": "Southern Lords",
+        "description": "Under Southern Lords influence."
+      },
+      {
+        "start": 1861,
+        "end": 1865,
+        "sect": "Contested",
+        "description": "Civil War period - Contested."
+      },
+      {
+        "start": 1865,
+        "end": 1930,
+        "sect": "Camarilla",
+        "description": "Post-Civil War period - Camarilla influence established."
+      },
+      {
+        "start": 1931,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Camarilla influence established."
+      }
+    ]
+  },
+  {
+    "name": "Jackson, TN",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1930,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1931,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Camarilla influence established."
+      }
+    ]
+  },
+  {
+    "name": "Jacksonville, FL",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1550,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1551,
+        "end": 2010,
+        "sect": "Sabbat",
+        "description": "Early Sabbat entrenchment in Spanish colonies, spreading north."
+      },
+      {
+        "start": 2011,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Camarilla influence established."
+      }
+    ]
+  },
+  {
+    "name": "Johnson City, TN",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1930,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1931,
+        "end": 2025,
+        "sect": "Anarchs",
+        "description": "Anarch freehold under Baron Jaden Santos."
+      }
+    ]
+  },
+  {
+    "name": "Kansas City, MO-KS",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1820,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1821,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Camarilla influence spreads inland."
+      }
+    ]
+  },
+  {
+    "name": "Killeen-Temple, TX",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1930,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1931,
+        "end": 1996,
+        "sect": "Sabbat",
+        "description": "Falls under Sabbat influence."
+      },
+      {
+        "start": 1997,
+        "end": 2006,
+        "sect": "Camarilla",
+        "description": "Brief Camarilla control."
+      },
+      {
+        "start": 2007,
+        "end": 2025,
+        "sect": "Sabbat",
+        "description": "Sabbat regains control."
+      }
+    ]
+  },
+  {
+    "name": "Kingsport-Bristol-Bristol, TN-VA",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1930,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1931,
+        "end": 2004,
+        "sect": "Camarilla",
+        "description": "Camarilla influence established."
+      },
+      {
+        "start": 2005,
+        "end": 2025,
+        "sect": "Anarchs",
+        "description": "Flipped to Anarch control."
+      }
+    ]
+  },
+  {
+    "name": "Knoxville, TN",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1930,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1931,
+        "end": 2000,
+        "sect": "Camarilla",
+        "description": "Camarilla bastion established."
+      },
+      {
+        "start": 2000,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Prince Iago (Nosferatu) ascends after former Prince disappears."
+      }
+    ]
+  },
+  {
+    "name": "Lake Charles, LA",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1798,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1798,
+        "end": 1813,
+        "sect": "Southern Lords",
+        "description": "Under Southern Lords influence."
+      },
+      {
+        "start": 1813,
+        "end": 1852,
+        "sect": "Sabbat",
+        "description": "Sabbat controlled form their push from Mexico City"
+      },
+      {
+        "start": 1852,
+        "end": 1863,
+        "sect": "Southern Lords",
+        "description": "Taken back over by the Southern Lords during their peek"
+      },
+      {
+        "start": 1863,
+        "end": 2025,
+        "sect": "Sabbat",
+        "description": "Firmly a Sabbat stronghold"
+      }
+    ]
+  },
+  {
+    "name": "Lancaster, PA",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1778,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1779,
+        "end": 1997,
+        "sect": "Camarilla",
+        "description": "Camarilla influence spreads inland."
+      },
+      {
+        "start": 1998,
+        "end": 2003,
+        "sect": "Sabbat",
+        "description": "Fell to Sabbat Crusade."
+      },
+      {
+        "start": 2004,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Camarilla pushes back, regains control."
+      }
+    ]
+  },
+  {
+    "name": "Lexington-Fayette, KY",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1805,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1806,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Camarilla influence spreads inland."
+      }
+    ]
+  },
+  {
+    "name": "Little Rock-North Little Rock-Conway, AR",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1810,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1811,
+        "end": 1861,
+        "sect": "Southern Lords",
+        "description": "Under Southern Lords influence."
+      },
+      {
+        "start": 1861,
+        "end": 1863,
+        "sect": "Contested",
+        "description": "Civil War period - Contested."
+      },
+      {
+        "start": 1863,
+        "end": 1930,
+        "sect": "Camarilla",
+        "description": "Union forces take Little Rock (September 10, 1863). Post-Civil War period - Camarilla influence established."
+      },
+      {
+        "start": 1931,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Camarilla influence established."
+      }
+    ]
+  },
+  {
+    "name": "Longview, TX",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1930,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1931,
+        "end": 1990,
+        "sect": "Sabbat",
+        "description": "Falls under Sabbat influence."
+      },
+      {
+        "start": 1991,
+        "end": 2000,
+        "sect": "Camarilla",
+        "description": "Brief Camarilla control."
+      },
+      {
+        "start": 2001,
+        "end": 2025,
+        "sect": "Sabbat",
+        "description": "Sabbat regains control."
+      }
+    ]
+  },
+  {
+    "name": "Louisville/Jefferson County, KY-IN",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1799,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1800,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Camarilla influence spreads inland."
+      }
+    ]
+  },
+  {
+    "name": "Lynchburg, VA",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1800,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1801,
+        "end": 1861,
+        "sect": "Southern Lords",
+        "description": "Influence of the Southern Lords grows."
+      },
+      {
+        "start": 1861,
+        "end": 1865,
+        "sect": "Contested",
+        "description": "Civil War period - Contested."
+      },
+      {
+        "start": 1865,
+        "end": 1999,
+        "sect": "Camarilla",
+        "description": "Post-Civil War period - Camarilla influence established."
+      },
+      {
+        "start": 1999,
+        "end": 2025,
+        "sect": "Anarchs",
+        "description": "Under Anarch control (part of the Charlottesville/Lynchburg/Roanoke group)."
+      }
+    ]
+  },
+  {
+    "name": "Macon-Bibb County, GA",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1811,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1812,
+        "end": 1861,
+        "sect": "Southern Lords",
+        "description": "Under Southern Lords influence."
+      },
+      {
+        "start": 1861,
+        "end": 1865,
+        "sect": "Contested",
+        "description": "Civil War period - Contested."
+      },
+      {
+        "start": 1865,
+        "end": 1930,
+        "sect": "Camarilla",
+        "description": "Post-Civil War period - Camarilla influence established."
+      },
+      {
+        "start": 1931,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Camarilla influence established."
+      }
+    ]
+  },
+  {
+    "name": "Memphis, TN-MS-AR",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1811,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1812,
+        "end": 1861,
+        "sect": "Southern Lords",
+        "description": "Under Southern Lords influence."
+      },
+      {
+        "start": 1861,
+        "end": 1862,
+        "sect": "Contested",
+        "description": "Civil War period - Contested."
+      },
+      {
+        "start": 1862,
+        "end": 2018,
+        "sect": "Camarilla",
+        "description": "Union forces capture Memphis (June 6, 1862). Post-Civil War: Previously a Camarilla holding."
+      },
+      {
+        "start": 2018,
+        "end": 2025,
+        "sect": "Independent Alliance",
+        "description": "Officially taken by the Independent Alliance."
+      }
+    ]
+  },
+  {
+    "name": "Miami-Fort Lauderdale-West Palm Beach, FL",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1520,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1521,
+        "end": 2000,
+        "sect": "Sabbat",
+        "description": "Early Sabbat entrenchment in Spanish colonies."
+      },
+      {
+        "start": 2000,
+        "end": 2005,
+        "sect": "Sabbat",
+        "description": "Became a Sabbat stronghold."
+      },
+      {
+        "start": 2005,
+        "end": 2010,
+        "sect": "Unclaimed",
+        "description": "Unclaimed, multi-cultural no-man’s-zone."
+      },
+      {
+        "start": 2010,
+        "end": 2015,
+        "sect": "Contested",
+        "description": "Taken from Sabbat grasp, but Sabbat still encroaching."
+      },
+      {
+        "start": 2015,
+        "end": 2025,
+        "sect": "Sabbat",
+        "description": "Settled into Sabbat control."
+      }
+    ]
+  },
+  {
+    "name": "Mobile, AL",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1785,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1786,
+        "end": 1861,
+        "sect": "Southern Lords",
+        "description": "Under Southern Lords influence."
+      },
+      {
+        "start": 1861,
+        "end": 1865,
+        "sect": "Contested",
+        "description": "Civil War period - Contested."
+      },
+      {
+        "start": 1865,
+        "end": 1930,
+        "sect": "Camarilla",
+        "description": "Union forces capture Mobile (April 12, 1865). Post-Civil War period - Camarilla influence established."
+      },
+      {
+        "start": 1931,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Camarilla influence established."
+      }
+    ]
+  },
+  {
+    "name": "Monroe, LA",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1811,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1812,
+        "end": 1861,
+        "sect": "Southern Lords",
+        "description": "Under Southern Lords influence."
+      },
+      {
+        "start": 1861,
+        "end": 1865,
+        "sect": "Contested",
+        "description": "Civil War period - Contested."
+      },
+      {
+        "start": 1865,
+        "end": 1930,
+        "sect": "Unknown",
+        "description": "Post-Civil War period - Status Unknown."
+      },
+      {
+        "start": 1931,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Camarilla influence established."
+      }
+    ]
+  },
+  {
+    "name": "Montgomery, AL",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1779,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1780,
+        "end": 1861,
+        "sect": "Southern Lords",
+        "description": "Falls under the influence of the Southern Lords."
+      },
+      {
+        "start": 1861,
+        "end": 1865,
+        "sect": "Contested",
+        "description": "Civil War period - Contested."
+      },
+      {
+        "start": 1865,
+        "end": 1930,
+        "sect": "Camarilla",
+        "description": "Union forces capture Montgomery (April 12, 1865). Post-Civil War period - Camarilla influence established."
+      },
+      {
+        "start": 1931,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Camarilla influence established."
+      }
+    ]
+  },
+  {
+    "name": "Morgantown, WV",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1930,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1931,
+        "end": 2004,
+        "sect": "Camarilla",
+        "description": "Camarilla influence established."
+      },
+      {
+        "start": 2005,
+        "end": 2025,
+        "sect": "Anarchs",
+        "description": "Part of the Appalachian Anarch range."
+      }
+    ]
+  },
+  {
+    "name": "Myrtle Beach-Conway-North Myrtle Beach, SC-NC",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1770,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1771,
+        "end": 1861,
+        "sect": "Southern Lords",
+        "description": "Under Southern Lords influence."
+      },
+      {
+        "start": 1861,
+        "end": 1865,
+        "sect": "Contested",
+        "description": "Civil War period - Contested."
+      },
+      {
+        "start": 1865,
+        "end": 1930,
+        "sect": "Unknown",
+        "description": "Post-Civil War period - Status Unknown."
+      },
+      {
+        "start": 1931,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Camarilla influence established."
+      }
+    ]
+  },
+  {
+    "name": "Nashville-Davidson--Murfreesboro--Franklin, TN",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1811,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1812,
+        "end": 1861,
+        "sect": "Southern Lords",
+        "description": "Under Southern Lords influence."
+      },
+      {
+        "start": 1861,
+        "end": 1862,
+        "sect": "Contested",
+        "description": "Civil War period - Contested."
+      },
+      {
+        "start": 1862,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Union forces occupy Nashville (February 23, 1862). Post-Civil War: Under Anarch control."
+      }
+    ]
+  },
+  {
+    "name": "New Bern, NC",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1782,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1783,
+        "end": 1861,
+        "sect": "Southern Lords",
+        "description": "Under Southern Lords influence."
+      },
+      {
+        "start": 1861,
+        "end": 1865,
+        "sect": "Contested",
+        "description": "Civil War period - Contested."
+      },
+      {
+        "start": 1865,
+        "end": 1930,
+        "sect": "Camarilla",
+        "description": "Post-Civil War period - Camarilla influence established."
+      },
+      {
+        "start": 1931,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Camarilla influence established."
+      }
+    ]
+  },
+  {
+    "name": "New Orleans-Metairie, LA",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1716,
+        "sect": "Unknown",
+        "description": "Early Colonial Era - Status Unknown. European Kindred begin claiming unseen domains."
+      },
+      {
+        "start": 1716,
+        "end": 1718,
+        "sect": "Unclaimed",
+        "description": "Doran defeated by Natchez tribe, domain lost."
+      },
+      {
+        "start": 1718,
+        "end": 1736,
+        "sect": "Unknown",
+        "description": "Doran retakes control."
+      },
+      {
+        "start": 1736,
+        "end": 1780,
+        "sect": "Unclaimed",
+        "description": "Doran defeated by Chickasaws, control lost again."
+      },
+      {
+        "start": 1780,
+        "end": 1800,
+        "sect": "Unknown",
+        "description": "Doran regains power after a revolt. Area contested."
+      },
+      {
+        "start": 1801,
+        "end": 1861,
+        "sect": "Southern Lords",
+        "description": "Influence of the Southern Lords grows."
+      },
+      {
+        "start": 1861,
+        "end": 1862,
+        "sect": "Contested",
+        "description": "Civil War period - Contested."
+      },
+      {
+        "start": 1862,
+        "end": 1955,
+        "sect": "Camarilla",
+        "description": "Union forces capture New Orleans (April 25, 1862). Post-Civil War period - Camarilla influence established."
+      },
+      {
+        "start": 1955,
+        "end": 2000,
+        "sect": "Camarilla",
+        "description": "Marcel takes over as Prince after Doran's murder."
+      },
+      {
+        "start": 2000,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Ostensibly Camarilla with Prince Antonio Calbullarshi, true power with Vodouists alliance."
+      }
+    ]
+  },
+  {
+    "name": "New York-Newark-Jersey City, NY-NJ-PA",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1640,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1641,
+        "end": 1997,
+        "sect": "Camarilla",
+        "description": "Camarilla influence established on the coast, spreads inland."
+      },
+      {
+        "start": 1998,
+        "end": 2004,
+        "sect": "Sabbat",
+        "description": "Fell to Sabbat Crusade."
+      },
+      {
+        "start": 2005,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Camarilla pushes back, regains control."
+      }
+    ]
+  },
+  {
+    "name": "Orlando-Kissimmee-Sanford, FL",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1540,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1541,
+        "end": 2008,
+        "sect": "Sabbat",
+        "description": "Early Sabbat entrenchment in Spanish colonies, spreading north."
+      },
+      {
+        "start": 2009,
+        "end": 2025,
+        "sect": "Independent Alliance",
+        "description": "Falls under Independent Alliance influence."
+      }
+    ]
+  },
+  {
+    "name": "Palestine, TX",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1930,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1931,
+        "end": 1993,
+        "sect": "Sabbat",
+        "description": "Falls under Sabbat influence."
+      },
+      {
+        "start": 1994,
+        "end": 2003,
+        "sect": "Camarilla",
+        "description": "Brief Camarilla control."
+      },
+      {
+        "start": 2004,
+        "end": 2025,
+        "sect": "Contested",
+        "description": "Contested on the Texas border."
+      }
+    ]
+  },
+  {
+    "name": "Panama City, FL",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1535,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1536,
+        "end": 2007,
+        "sect": "Sabbat",
+        "description": "Early Sabbat entrenchment in Spanish colonies."
+      },
+      {
+        "start": 2008,
+        "end": 2025,
+        "sect": "Independent Alliance",
+        "description": "Falls under Independent Alliance influence."
+      }
+    ]
+  },
+  {
+    "name": "Parkersburg-Vienna, WV",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1930,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1931,
+        "end": 2009,
+        "sect": "Camarilla",
+        "description": "Camarilla influence established."
+      },
+      {
+        "start": 2010,
+        "end": 2025,
+        "sect": "Anarchs",
+        "description": "Part of the Appalachian Anarch range."
+      }
+    ]
+  },
+  {
+    "name": "Pensacola-Ferry Pass-Brent, FL",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1525,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1526,
+        "end": 2005,
+        "sect": "Sabbat",
+        "description": "Early Sabbat entrenchment in Spanish colonies."
+      },
+      {
+        "start": 2006,
+        "end": 2025,
+        "sect": "Independent Alliance",
+        "description": "Falls under Independent Alliance influence."
+      }
+    ]
+  },
+  {
+    "name": "Philadelphia-Camden-Wilmington, PA-NJ-DE-MD",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1660,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1661,
+        "end": 1997,
+        "sect": "Camarilla",
+        "description": "Camarilla influence spreads inland."
+      },
+      {
+        "start": 1998,
+        "end": 2003,
+        "sect": "Sabbat",
+        "description": "Fell to Sabbat Crusade."
+      },
+      {
+        "start": 2004,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Camarilla pushes back, regains control."
+      }
+    ]
+  },
+  {
+    "name": "Pine Bluff, AR",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1811,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1812,
+        "end": 1861,
+        "sect": "Southern Lords",
+        "description": "Under Southern Lords influence."
+      },
+      {
+        "start": 1861,
+        "end": 1865,
+        "sect": "Contested",
+        "description": "Civil War period - Contested."
+      },
+      {
+        "start": 1865,
+        "end": 1930,
+        "sect": "Unknown",
+        "description": "Post-Civil War period - Status Unknown."
+      },
+      {
+        "start": 1931,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Camarilla influence established."
+      }
+    ]
+  },
+  {
+    "name": "Pittsburgh, PA",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1770,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1771,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Camarilla influence spreads inland."
+      }
+    ]
+  },
+  {
+    "name": "Raleigh, NC",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1795,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1796,
+        "end": 1811,
+        "sect": "Camarilla",
+        "description": "Camarilla influence spreads inland."
+      },
+      {
+        "start": 1812,
+        "end": 1861,
+        "sect": "Southern Lords",
+        "description": "Influence of the Southern Lords grows."
+      },
+      {
+        "start": 1861,
+        "end": 1865,
+        "sect": "Contested",
+        "description": "Civil War period - Contested."
+      },
+      {
+        "start": 1865,
+        "end": 1999,
+        "sect": "Camarilla",
+        "description": "Post-Civil War period - Camarilla influence established."
+      },
+      {
+        "start": 1999,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Part of The Triangle domain under Prince Malphas."
+      }
+    ]
+  },
+  {
+    "name": "Reading, PA",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1780,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1781,
+        "end": 1997,
+        "sect": "Camarilla",
+        "description": "Camarilla influence spreads inland."
+      },
+      {
+        "start": 1998,
+        "end": 2003,
+        "sect": "Sabbat",
+        "description": "Fell to Sabbat Crusade."
+      },
+      {
+        "start": 2004,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Camarilla pushes back, regains control."
+      }
+    ]
+  },
+  {
+    "name": "Richmond, VA",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1779,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1780,
+        "end": 1861,
+        "sect": "Southern Lords",
+        "description": "Falls under the influence of the Southern Lords."
+      },
+      {
+        "start": 1861,
+        "end": 1865,
+        "sect": "Contested",
+        "description": "Civil War period - Contested."
+      },
+      {
+        "start": 1865,
+        "end": 1990,
+        "sect": "Camarilla",
+        "description": "Union forces capture Richmond (April 3, 1865). Post-Civil War: Camarilla control established."
+      },
+      {
+        "start": 1990,
+        "end": 2020,
+        "sect": "Sabbat",
+        "description": "Fell to Sabbat Crusade, firmly Sabbat."
+      },
+      {
+        "start": 2020,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Under Camarilla control with Prince Don Carlos."
+      }
+    ]
+  },
+  {
+    "name": "Roanoke, VA",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1805,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1806,
+        "end": 1861,
+        "sect": "Southern Lords",
+        "description": "Influence of the Southern Lords grows."
+      },
+      {
+        "start": 1861,
+        "end": 1865,
+        "sect": "Contested",
+        "description": "Civil War period - Contested."
+      },
+      {
+        "start": 1865,
+        "end": 1999,
+        "sect": "Camarilla",
+        "description": "Post-Civil War period - Camarilla influence established."
+      },
+      {
+        "start": 1999,
+        "end": 2025,
+        "sect": "Anarchs",
+        "description": "Under Anarch control (part of the Charlottesville/Lynchburg/Roanoke group)."
+      }
+    ]
+  },
+  {
+    "name": "Rocky Mount, NC",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1798,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1799,
+        "end": 1861,
+        "sect": "Southern Lords",
+        "description": "Under Southern Lords influence."
+      },
+      {
+        "start": 1861,
+        "end": 1865,
+        "sect": "Contested",
+        "description": "Civil War period - Contested."
+      },
+      {
+        "start": 1865,
+        "end": 1930,
+        "sect": "Camarilla",
+        "description": "Post-Civil War period - Camarilla influence established."
+      },
+      {
+        "start": 1931,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Camarilla influence established."
+      }
+    ]
+  },
+  {
+    "name": "Salisbury, MD-DE",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1655,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1656,
+        "end": 1996,
+        "sect": "Camarilla",
+        "description": "Camarilla influence spreads inland."
+      },
+      {
+        "start": 1997,
+        "end": 2002,
+        "sect": "Sabbat",
+        "description": "Fell to Sabbat Crusade."
+      },
+      {
+        "start": 2003,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Camarilla pushes back, regains control."
+      }
+    ]
+  },
+  {
+    "name": "San Antonio-New Braunfels, TX",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1798,
+        "sect": "Unclaimed",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1798,
+        "end": 1990,
+        "sect": "Sabbat",
+        "description": "Falls under Sabbat influence spreading north from Mexico."
+      },
+      {
+        "start": 1991,
+        "end": 2025,
+        "sect": "Contested",
+        "description": "Contested due to Camarilla pressure."
+      }
+    ]
+  },
+  {
+    "name": "Savannah, GA",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1709,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1710,
+        "end": 1780,
+        "sect": "Camarilla",
+        "description": "Early Camarilla influence from the coast."
+      },
+      {
+        "start": 1781,
+        "end": 1861,
+        "sect": "Southern Lords",
+        "description": "Under Southern Lords influence."
+      },
+      {
+        "start": 1861,
+        "end": 1864,
+        "sect": "Contested",
+        "description": "Civil War period - Contested."
+      },
+      {
+        "start": 1864,
+        "end": 1990,
+        "sect": "Camarilla",
+        "description": "Union forces capture Savannah (December 21, 1864). Post-Civil War: Camarilla control established."
+      },
+      {
+        "start": 1990,
+        "end": 2025,
+        "sect": "Sabbat",
+        "description": "Sabbat Crusade conquers Savannah, later settled into Sabbat control."
+      }
+    ]
+  },
+  {
+    "name": "Sevierville, TN",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1930,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1931,
+        "end": 2004,
+        "sect": "Camarilla",
+        "description": "Camarilla influence established."
+      },
+      {
+        "start": 2005,
+        "end": 2025,
+        "sect": "Anarchs",
+        "description": "Part of the Appalachian Anarch range."
+      }
+    ]
+  },
+  {
+    "name": "Shreveport-Bossier City, LA",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1811,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1812,
+        "end": 1861,
+        "sect": "Southern Lords",
+        "description": "Under Southern Lords influence."
+      },
+      {
+        "start": 1861,
+        "end": 1865,
+        "sect": "Contested",
+        "description": "Civil War period - Contested."
+      },
+      {
+        "start": 1865,
+        "end": 1930,
+        "sect": "Camarilla",
+        "description": "Post-Civil War period - Camarilla influence established."
+      },
+      {
+        "start": 1931,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Camarilla influence established."
+      }
+    ]
+  },
+  {
+    "name": "Spartanburg, SC",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1778,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1779,
+        "end": 1861,
+        "sect": "Southern Lords",
+        "description": "Under Southern Lords influence."
+      },
+      {
+        "start": 1861,
+        "end": 1865,
+        "sect": "Contested",
+        "description": "Civil War period - Contested."
+      },
+      {
+        "start": 1865,
+        "end": 1995,
+        "sect": "Camarilla",
+        "description": "Post-Civil War period - Camarilla influence established."
+      },
+      {
+        "start": 1996,
+        "end": 2025,
+        "sect": "Sabbat",
+        "description": "Fell to Sabbat Crusade."
+      }
+    ]
+  },
+  {
+    "name": "St. Louis, MO-IL",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1815,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1816,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Camarilla influence spreads inland."
+      }
+    ]
+  },
+  {
+    "name": "Sumter, SC",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1805,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1806,
+        "end": 1861,
+        "sect": "Southern Lords",
+        "description": "Under Southern Lords influence."
+      },
+      {
+        "start": 1861,
+        "end": 1865,
+        "sect": "Contested",
+        "description": "Civil War period - Contested."
+      },
+      {
+        "start": 1865,
+        "end": 1930,
+        "sect": "Unknown",
+        "description": "Post-Civil War period - Status Unknown."
+      },
+      {
+        "start": 1931,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Camarilla influence established."
+      }
+    ]
+  },
+  {
+    "name": "Tallahassee, FL",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1545,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1546,
+        "end": 2009,
+        "sect": "Sabbat",
+        "description": "Early Sabbat entrenchment in Spanish colonies."
+      },
+      {
+        "start": 2010,
+        "end": 2025,
+        "sect": "Independent Alliance",
+        "description": "Falls under Independent Alliance influence."
+      }
+    ]
+  },
+  {
+    "name": "Tampa-St. Petersburg-Clearwater, FL",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1530,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1531,
+        "end": 2005,
+        "sect": "Sabbat",
+        "description": "Early Sabbat entrenchment in Spanish colonies."
+      },
+      {
+        "start": 2006,
+        "end": 2025,
+        "sect": "Independent Alliance",
+        "description": "Falls under Independent Alliance influence."
+      }
+    ]
+  },
+  {
+    "name": "Texarkana, TX-AR",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1930,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1931,
+        "end": 1990,
+        "sect": "Sabbat",
+        "description": "Falls under Sabbat influence."
+      },
+      {
+        "start": 1991,
+        "end": 2000,
+        "sect": "Camarilla",
+        "description": "Brief Camarilla control."
+      },
+      {
+        "start": 2001,
+        "end": 2025,
+        "sect": "Contested",
+        "description": "Contested on the Texas border."
+      }
+    ]
+  },
+  {
+    "name": "Tulsa, OK",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1930,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1931,
+        "end": 1998,
+        "sect": "Sabbat",
+        "description": "Falls under Sabbat influence spreading north from Texas."
+      },
+      {
+        "start": 1999,
+        "end": 2008,
+        "sect": "Camarilla",
+        "description": "Brief Camarilla control."
+      },
+      {
+        "start": 2009,
+        "end": 2025,
+        "sect": "Sabbat",
+        "description": "Sabbat regains control."
+      }
+    ]
+  },
+  {
+    "name": "Tuscaloosa, AL",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1811,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1812,
+        "end": 1861,
+        "sect": "Southern Lords",
+        "description": "Under Southern Lords influence."
+      },
+      {
+        "start": 1861,
+        "end": 1865,
+        "sect": "Contested",
+        "description": "Civil War period - Contested."
+      },
+      {
+        "start": 1865,
+        "end": 1930,
+        "sect": "Unknown",
+        "description": "Post-Civil War period - Status Unknown."
+      },
+      {
+        "start": 1931,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Camarilla influence established."
+      }
+    ]
+  },
+  {
+    "name": "Tyler, TX",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1930,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1931,
+        "end": 1992,
+        "sect": "Sabbat",
+        "description": "Falls under Sabbat influence."
+      },
+      {
+        "start": 1993,
+        "end": 2002,
+        "sect": "Camarilla",
+        "description": "Brief Camarilla control."
+      },
+      {
+        "start": 2003,
+        "end": 2025,
+        "sect": "Sabbat",
+        "description": "Sabbat regains control."
+      }
+    ]
+  },
+  {
+    "name": "Victoria, TX",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1801,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1801,
+        "end": 1988,
+        "sect": "Sabbat",
+        "description": "Falls under Sabbat influence."
+      },
+      {
+        "start": 1989,
+        "end": 1998,
+        "sect": "Camarilla",
+        "description": "Brief Camarilla control."
+      },
+      {
+        "start": 1999,
+        "end": 2025,
+        "sect": "Contested",
+        "description": "Contested on the Texas border."
+      }
+    ]
+  },
+  {
+    "name": "Virginia Beach-Norfolk-Newport News, VA-NC",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1690,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1691,
+        "end": 1811,
+        "sect": "Camarilla",
+        "description": "Camarilla influence established on the coast."
+      },
+      {
+        "start": 1812,
+        "end": 1861,
+        "sect": "Southern Lords",
+        "description": "Influence of the Southern Lords grows."
+      },
+      {
+        "start": 1861,
+        "end": 1865,
+        "sect": "Contested",
+        "description": "Civil War period - Contested."
+      },
+      {
+        "start": 1865,
+        "end": 1995,
+        "sect": "Camarilla",
+        "description": "Post-Civil War: Camarilla control established."
+      },
+      {
+        "start": 1996,
+        "end": 2000,
+        "sect": "Sabbat",
+        "description": "Fell to Sabbat Crusade."
+      },
+      {
+        "start": 2001,
+        "end": 2025,
+        "sect": "Contested",
+        "description": "Camarilla pushes back, contested."
+      }
+    ]
+  },
+  {
+    "name": "Waco, TX",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1930,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1931,
+        "end": 1990,
+        "sect": "Sabbat",
+        "description": "Falls under Sabbat influence."
+      },
+      {
+        "start": 1991,
+        "end": 2000,
+        "sect": "Camarilla",
+        "description": "Brief Camarilla control."
+      },
+      {
+        "start": 2001,
+        "end": 2025,
+        "sect": "Sabbat",
+        "description": "Sabbat regains control."
+      }
+    ]
+  },
+  {
+    "name": "Warner Robins, GA",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1930,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1931,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Camarilla influence established."
+      }
+    ]
+  },
+  {
+    "name": "Washington-Arlington-Alexandria, DC-VA-MD-WV",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1680,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1681,
+        "end": 1990,
+        "sect": "Camarilla",
+        "description": "Camarilla influence spreads inland."
+      },
+      {
+        "start": 1990,
+        "end": 2000,
+        "sect": "Sabbat",
+        "description": "Fell to Sabbat Crusade."
+      },
+      {
+        "start": 2001,
+        "end": 2025,
+        "sect": "Contested",
+        "description": "Camarilla pushes back, now a contested zone by all three sects."
+      }
+    ]
+  },
+  {
+    "name": "Wheeling, WV-OH",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1930,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1931,
+        "end": 2008,
+        "sect": "Camarilla",
+        "description": "Camarilla influence established."
+      },
+      {
+        "start": 2009,
+        "end": 2025,
+        "sect": "Anarchs",
+        "description": "Part of the Appalachian Anarch range."
+      }
+    ]
+  },
+  {
+    "name": "Wilmington, NC",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1755,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1756,
+        "end": 1811,
+        "sect": "Camarilla",
+        "description": "Camarilla influence from the coast."
+      },
+      {
+        "start": 1812,
+        "end": 1861,
+        "sect": "Southern Lords",
+        "description": "Under Southern Lords influence."
+      },
+      {
+        "start": 1861,
+        "end": 1865,
+        "sect": "Contested",
+        "description": "Civil War period - Contested."
+      },
+      {
+        "start": 1865,
+        "end": 2011,
+        "sect": "Contested",
+        "description": "Post-Civil War: Assorted Anarch and Sabbat holdings."
+      },
+      {
+        "start": 2011,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Prince Michelle 'The Kraken' (Gangrel) consolidates control (struggles with Anarch contingent)."
+      }
+    ]
+  },
+  {
+    "name": "Winston-Salem, NC",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1930,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1931,
+        "end": 2025,
+        "sect": "Sabbat",
+        "description": "Sabbat Diocese, stronghold in the Piedmont."
+      }
+    ]
+  },
+  {
+    "name": "York-Hanover, PA",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1775,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1776,
+        "end": 1997,
+        "sect": "Camarilla",
+        "description": "Camarilla influence spreads inland."
+      },
+      {
+        "start": 1998,
+        "end": 2003,
+        "sect": "Sabbat",
+        "description": "Fell to Sabbat Crusade."
+      },
+      {
+        "start": 2004,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Camarilla pushes back, regains control."
+      }
+    ]
+  },
+  {
+    "name": "Springfield, MO",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1818,
+        "sect": "Unknown",
+        "description": "Initial Unknown period."
+      },
+      {
+        "start": 1818,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Camarilla Controlled"
+      }
+    ]
+  },
+  {
+    "name": "Dublin, GA",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1801,
+        "sect": "Unknown",
+        "description": "Initial Unknown period."
+      },
+      {
+        "start": 1801,
+        "end": 1831,
+        "sect": "Camarilla",
+        "description": "Established Tower Domain"
+      },
+      {
+        "start": 1831,
+        "end": 1864,
+        "sect": "Southern Lords",
+        "description": "Southern Lords"
+      },
+      {
+        "start": 1864,
+        "end": 2025,
+        "sect": "Sabbat",
+        "description": "Sabbat domain"
+      }
+    ]
+  },
+  {
+    "name": "Decatur, AL",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1791,
+        "sect": "Unknown",
+        "description": "Initial Unknown period."
+      },
+      {
+        "start": 1791,
+        "end": 1862,
+        "sect": "Southern Lords",
+        "description": "Southern Lords"
+      },
+      {
+        "start": 1862,
+        "end": 1998,
+        "sect": "Camarilla",
+        "description": "Camarilla Establishment"
+      },
+      {
+        "start": 1998,
+        "end": 2013,
+        "sect": "Sabbat",
+        "description": "Sabbat from the Crusade"
+      },
+      {
+        "start": 2013,
+        "end": 2017,
+        "sect": "Independent Alliance",
+        "description": "Bold strike removes key Sabbat territory behind lines.  IA has trouble holding out."
+      },
+      {
+        "start": 2017,
+        "end": 2025,
+        "sect": "Sabbat",
+        "description": "Sabbat Reestablishes control"
+      }
+    ]
+  },
+  {
+    "name": "Hickory-Lenoir-Morganton, NC",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1888,
+        "sect": "Unknown",
+        "description": "Initial Unknown period."
+      },
+      {
+        "start": 1888,
+        "end": 1914,
+        "sect": "Camarilla",
+        "description": "Part of Evander's holdings."
+      },
+      {
+        "start": 1914,
+        "end": 2025,
+        "sect": "Sabbat",
+        "description": "Sabbat Controlled"
+      }
+    ]
+  },
+  {
+    "name": "Newport, TN",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1888,
+        "sect": "Unknown",
+        "description": "Initial Unknown period."
+      },
+      {
+        "start": 1888,
+        "end": 1914,
+        "sect": "Camarilla",
+        "description": "Evander's extended domain."
+      },
+      {
+        "start": 1914,
+        "end": 2001,
+        "sect": "Sabbat",
+        "description": "Weakened when packs were removed to participate in the Crusade."
+      },
+      {
+        "start": 2001,
+        "end": 2025,
+        "sect": "Anarchs",
+        "description": "Anarch territory, part of the Appalachian Anarch Range."
+      }
+    ]
+  },
+  {
+    "name": "Boone, NC",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1888,
+        "sect": "Unknown",
+        "description": "Initial Unknown period."
+      },
+      {
+        "start": 1888,
+        "end": 1914,
+        "sect": "Camarilla",
+        "description": "Part of Evander's extended domain"
+      },
+      {
+        "start": 1914,
+        "end": 1991,
+        "sect": "Sabbat",
+        "description": "Flips with the Region and Tallula to Sabbat"
+      },
+      {
+        "start": 1991,
+        "end": 2025,
+        "sect": "Anarchs",
+        "description": "Moves Anarch after the flip."
+      }
+    ]
+  },
+  {
+    "name": "Greeneville, TN",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1888,
+        "sect": "Unknown",
+        "description": "Initial Unknown period."
+      },
+      {
+        "start": 1888,
+        "end": 1914,
+        "sect": "Camarilla",
+        "description": "Evander's extended reach"
+      },
+      {
+        "start": 1914,
+        "end": 1991,
+        "sect": "Sabbat",
+        "description": "Follows Tallula to Sabbat"
+      },
+      {
+        "start": 1991,
+        "end": 2025,
+        "sect": "Anarchs",
+        "description": "Joins the Anarch Appalachian movement"
+      }
+    ]
+  },
+  {
+    "name": "Cullowhee, NC",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1888,
+        "sect": "Unknown",
+        "description": "Initial Unknown period."
+      },
+      {
+        "start": 1888,
+        "end": 1914,
+        "sect": "Camarilla",
+        "description": "Follows Evander to the Tower"
+      },
+      {
+        "start": 1914,
+        "end": 2025,
+        "sect": "Sabbat",
+        "description": "Follows Tallula to the Sabbat, remains Sabbat to this day"
+      }
+    ]
+  },
+  {
+    "name": "Brevard, NC",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1888,
+        "sect": "Unknown",
+        "description": "Initial Unknown period."
+      },
+      {
+        "start": 1888,
+        "end": 1914,
+        "sect": "Camarilla",
+        "description": "Evander's extended domain"
+      },
+      {
+        "start": 1914,
+        "end": 2025,
+        "sect": "Sabbat",
+        "description": "Remains Sabbat after the flip of Greater Asheville, to this day."
+      }
+    ]
+  },
+  {
+    "name": "Marion, NC",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1888,
+        "sect": "Unknown",
+        "description": "Initial Unknown period."
+      },
+      {
+        "start": 1888,
+        "end": 1914,
+        "sect": "Unknown",
+        "description": "Evander's Extended Domain"
+      },
+      {
+        "start": 1914,
+        "end": 2025,
+        "sect": "Sabbat",
+        "description": "Sabbat Influence"
+      }
+    ]
+  },
+  {
+    "name": "Forest City, NC",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1888,
+        "sect": "Unknown",
+        "description": "Initial Unknown period."
+      },
+      {
+        "start": 1888,
+        "end": 1914,
+        "sect": "Unknown",
+        "description": "Evander's extended domain"
+      },
+      {
+        "start": 1914,
+        "end": 2025,
+        "sect": "Sabbat",
+        "description": "Remains Sabbat to this day"
+      }
+    ]
+  },
+  {
+    "name": "Morristown, TN",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1888,
+        "sect": "Unknown",
+        "description": "Initial Unknown period."
+      },
+      {
+        "start": 1888,
+        "end": 1914,
+        "sect": "Camarilla",
+        "description": "Camarilla"
+      },
+      {
+        "start": 1914,
+        "end": 2002,
+        "sect": "Sabbat",
+        "description": "Sabbat flip, until weakened by the Sabbat Crusade up the east coast, and the rise of the Anarchs"
+      },
+      {
+        "start": 2002,
+        "end": 2025,
+        "sect": "Anarchs",
+        "description": "Anarch control, as part of the Appalachain Anarch Pact"
+      }
+    ]
+  },
+  {
+    "name": "Kingsville, TX",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1902,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1902,
+        "end": 1988,
+        "sect": "Sabbat",
+        "description": "Falls under Sabbat influence."
+      },
+      {
+        "start": 1989,
+        "end": 1998,
+        "sect": "Camarilla",
+        "description": "Brief Camarilla control."
+      },
+      {
+        "start": 1999,
+        "end": 2025,
+        "sect": "Contested",
+        "description": "Contested on the Texas border."
+      }
+    ]
+  },
+  {
+    "name": "Columbus, OH",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1810,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1811,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Camarilla influence spreads inland."
+      }
+    ]
+  },
+  {
+    "name": "McAllen-Edinburg-Mission, TX",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1899,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1899,
+        "end": 1988,
+        "sect": "Sabbat",
+        "description": "Falls under Sabbat influence."
+      },
+      {
+        "start": 1989,
+        "end": 1998,
+        "sect": "Camarilla",
+        "description": "Brief Camarilla control."
+      },
+      {
+        "start": 1999,
+        "end": 2025,
+        "sect": "Contested",
+        "description": "Contested on the Texas border."
+      }
+    ]
+  },
+  {
+    "name": "Oklahoma City, OK",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1897,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1897,
+        "end": 1998,
+        "sect": "Sabbat",
+        "description": "Falls under Sabbat influence spreading north from Texas."
+      },
+      {
+        "start": 1999,
+        "end": 2008,
+        "sect": "Camarilla",
+        "description": "Brief Camarilla control."
+      },
+      {
+        "start": 2009,
+        "end": 2025,
+        "sect": "Sabbat",
+        "description": "Sabbat regains control."
+      }
+    ]
+  },
+  {
+    "name": "Blacksburg-Christiansburg-Radford, VA",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1805,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1806,
+        "end": 1861,
+        "sect": "Southern Lords",
+        "description": "Influence of the Southern Lords grows."
+      },
+      {
+        "start": 1861,
+        "end": 1865,
+        "sect": "Contested",
+        "description": "Civil War period - Contested."
+      },
+      {
+        "start": 1865,
+        "end": 1999,
+        "sect": "Camarilla",
+        "description": "Post-Civil War period - Camarilla influence established."
+      },
+      {
+        "start": 1999,
+        "end": 2025,
+        "sect": "Anarchs",
+        "description": "Under Anarch control (part of the Charlottesville/Lynchburg/Roanoke group)."
+      }
+    ]
+  },
+  {
+    "name": "Bluefield, WV-VA",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1805,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1806,
+        "end": 1861,
+        "sect": "Southern Lords",
+        "description": "Influence of the Southern Lords grows."
+      },
+      {
+        "start": 1861,
+        "end": 1865,
+        "sect": "Contested",
+        "description": "Civil War period - Contested."
+      },
+      {
+        "start": 1865,
+        "end": 1999,
+        "sect": "Camarilla",
+        "description": "Post-Civil War period - Camarilla influence established."
+      },
+      {
+        "start": 1999,
+        "end": 2025,
+        "sect": "Anarchs",
+        "description": "Under Anarch control (part of the Charlottesville/Lynchburg/Roanoke group)."
+      }
+    ]
+  },
+  {
+    "name": "North Port-Sarasota-Bradenton, FL",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1530,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1531,
+        "end": 2005,
+        "sect": "Sabbat",
+        "description": "Early Sabbat entrenchment in Spanish colonies."
+      },
+      {
+        "start": 2006,
+        "end": 2025,
+        "sect": "Independent Alliance",
+        "description": "Falls under Independent Alliance influence."
+      }
+    ]
+  },
+  {
+    "name": "Naples-Immokalee-Marco Island, FL",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1530,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1531,
+        "end": 2005,
+        "sect": "Sabbat",
+        "description": "Early Sabbat entrenchment in Spanish colonies."
+      },
+      {
+        "start": 2006,
+        "end": 2025,
+        "sect": "Independent Alliance",
+        "description": "Falls under Independent Alliance influence."
+      }
+    ]
+  },
+  {
+    "name": "Valdosta, GA",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1811,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1812,
+        "end": 1861,
+        "sect": "Southern Lords",
+        "description": "Under Southern Lords influence."
+      },
+      {
+        "start": 1861,
+        "end": 1865,
+        "sect": "Contested",
+        "description": "Civil War period - Contested."
+      },
+      {
+        "start": 1865,
+        "end": 1998,
+        "sect": "Camarilla",
+        "description": "Post-Civil War period, Stable Camarilla Domain."
+      },
+      {
+        "start": 1998,
+        "end": 2025,
+        "sect": "Sabbat",
+        "description": "Sabbat influence established."
+      }
+    ]
+  },
+  {
+    "name": "Bloomington, IL",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1814,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1814,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Camarilla influence spreads inland."
+      }
+    ]
+  },
+  {
+    "name": "Fort Smith, AR-OK",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1930,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1931,
+        "end": 1998,
+        "sect": "Sabbat",
+        "description": "Falls under Sabbat influence spreading north from Texas."
+      },
+      {
+        "start": 1999,
+        "end": 2008,
+        "sect": "Anarchs",
+        "description": "Brief Anarch control."
+      },
+      {
+        "start": 2009,
+        "end": 2025,
+        "sect": "Sabbat",
+        "description": "Sabbat regains control."
+      }
+    ]
+  },
+  {
+    "name": "Hinesville, GA",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1709,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1710,
+        "end": 1780,
+        "sect": "Camarilla",
+        "description": "Early Camarilla influence from the coast."
+      },
+      {
+        "start": 1781,
+        "end": 1862,
+        "sect": "Southern Lords",
+        "description": "Under Southern Lords influence."
+      },
+      {
+        "start": 1862,
+        "end": 1864,
+        "sect": "Contested",
+        "description": "Civil War period - Contested."
+      },
+      {
+        "start": 1864,
+        "end": 1990,
+        "sect": "Camarilla",
+        "description": "Union forces capture Savannah (December 21, 1864). Post-Civil War: Camarilla control established."
+      },
+      {
+        "start": 1990,
+        "end": 2025,
+        "sect": "Sabbat",
+        "description": "Sabbat Crusade conquers Savannah, later settled into Sabbat control."
+      }
+    ]
+  },
+  {
+    "name": "Lafayette, LA",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1808,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1808,
+        "end": 1861,
+        "sect": "Southern Lords",
+        "description": "Under Southern Lords influence."
+      },
+      {
+        "start": 1861,
+        "end": 1865,
+        "sect": "Contested",
+        "description": "Civil War period - Contested."
+      },
+      {
+        "start": 1865,
+        "end": 1930,
+        "sect": "Camarilla",
+        "description": "Post-Civil War period - Camarilla influence established."
+      },
+      {
+        "start": 1931,
+        "end": 1950,
+        "sect": "Anarchs",
+        "description": "Brief Anarch control."
+      },
+      {
+        "start": 1951,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Camarilla regains control."
+      }
+    ]
+  },
+  {
+    "name": "Wichita, KS",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1819,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1819,
+        "end": 1832,
+        "sect": "Sabbat",
+        "description": "Falls under Sabbat influence spreading north from Texas."
+      },
+      {
+        "start": 1832,
+        "end": 1902,
+        "sect": "Camarilla",
+        "description": "Comes back to Camarilla as the railroad influence starts to make the city grow"
+      },
+      {
+        "start": 1902,
+        "end": 1943,
+        "sect": "Sabbat",
+        "description": "Sabbat regains control, pushing north from Mexico, in a completely unexpected coop, and a dead Prince as the Packs invaded."
+      },
+      {
+        "start": 1943,
+        "end": 1969,
+        "sect": "Anarchs",
+        "description": "Anarch Baron claims ownership as most of the packs in Wichita are nomadic.   "
+      },
+      {
+        "start": 1969,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "The Anarch Prince flips to the tower after unkonwn treaty is signed with the Justicariate."
+      }
+    ]
+  },
+  {
+    "name": "Topeka, KS",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1820,
+        "sect": "Unclaimed",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1821,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Camarilla influence spreads inland."
+      }
+    ]
+  },
+  {
+    "name": "Fayetteville-Springdale-Rogers, AR-MO",
+    "timeline": [
+      {
+        "start": 1495,
+        "end": 1889,
+        "sect": "Unknown",
+        "description": "Early period - Status Unknown."
+      },
+      {
+        "start": 1889,
+        "end": 1952,
+        "sect": "Sabbat",
+        "description": "Falls under Sabbat influence spreading north from Texas."
+      },
+      {
+        "start": 1952,
+        "end": 1965,
+        "sect": "Anarchs",
+        "description": "Brief Anarch control."
+      },
+      {
+        "start": 1965,
+        "end": 2025,
+        "sect": "Camarilla",
+        "description": "Camarilla regains control."
+      }
+    ]
+  }
+]

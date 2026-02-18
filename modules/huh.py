@@ -4,7 +4,7 @@ import asyncio
 from jinja2 import Environment, FileSystemLoader
 import discord
 
-logging.basicConfig(level=logging.WARNING)
+logger = logging.getLogger(__name__)
 
 # A simple list of common stop words.
 STOP_WORDS = set([
@@ -21,12 +21,13 @@ class Huh:
     def __init__(self, database_filename: str = "huh.db"): # Must accept database_filename
         self.db_name = database_filename
         # self.template_env = Environment(loader=FileSystemLoader("templates")) # If you had this, ensure it's also correct or removed if not used
-        logging.info(f"Huh command instance initialized with DB: {self.db_name}")
+        logger.info(f"Huh command instance initialized with DB: {self.db_name}")
     
     # ... rest of the Huh class (async def run, _format_page_content, etc.)
 
 
     async def run(self, client: discord.Client, message: discord.Message):
+        logger.info(f"Command started: /huh by {message.author} in {message.channel}")
 
         parts = message.content.split()
         if len(parts) < 2:
@@ -36,8 +37,10 @@ class Huh:
         result, suggestions = await asyncio.to_thread(self._search_database, title_search)
 
         if result:
+            logger.info(f"Huh: Found exact match for '{title_search}'")
             return self._format_page_content(result)
         elif suggestions:
+            logger.info(f"Huh: No exact match for '{title_search}', found {len(suggestions)} suggestions")
             unique_suggestions = list(set(suggestions))
             unique_suggestions = [s for s in unique_suggestions if s.lower() != title_search.lower()]
             unique_suggestions.sort(key=lambda s: (len(s), s.lower()))
@@ -70,6 +73,7 @@ class Huh:
                 await message.author.send(dm_message)
                 return None
         else:
+            logger.info(f"Huh: No matches or suggestions for '{title_search}'")
             await message.delete()
             dm_message = f"Sorry, I couldn't find any content matching the significant terms in: '{title_search}'."
             await message.author.send(dm_message)
@@ -102,7 +106,7 @@ class Huh:
                     suggestions = [row['title'] for row in cursor.fetchall()]
                     return None, suggestions
         except Exception as e:
-            logging.exception(f"Error during database operation or processing for '{title_search}': {e}")
+            logger.exception(f"Error during database operation or processing for '{title_search}': {e}")
             return None, None
 
 

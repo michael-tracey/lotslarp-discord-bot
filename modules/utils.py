@@ -61,6 +61,186 @@ def smart_chunk_message(text: str, limit: int = 1950) -> list[str]:
 
     return final_chunks_pass2
 
+import os
+import subprocess
+import asyncio
+import logging
+
+logger = logging.getLogger(__name__)
+
+async def compress_pdf(input_path: str, output_path: str, power: int = 2) -> bool:
+    """
+    Compresses a PDF using Ghostscript.
+    
+    Args:
+        input_path: Path to the source PDF.
+        output_path: Path where the compressed PDF should be saved.
+        power: Compression power (0-4):
+               0: default (low compression, high quality)
+               1: prepress (high quality, 300 dpi)
+               2: printer (good quality, 300 dpi)
+               3: ebook (medium quality, 150 dpi)
+               4: screen (low quality, 72 dpi)
+    
+    Returns:
+        bool: True if compression was successful, False otherwise.
+    """
+    settings = {
+        0: "/default",
+        1: "/prepress",
+        2: "/printer",
+        3: "/ebook",
+        4: "/screen"
+    }
+    
+    pdf_setting = settings.get(power, "/printer")
+    
+    gs_command = [
+        "gs",
+        "-sDEVICE=pdfwrite",
+        "-dCompatibilityLevel=1.4",
+        f"-dPDFSETTINGS={pdf_setting}",
+        "-dNOPAUSE",
+        "-dQUIET",
+        "-dBATCH",
+        f"-sOutputFile={output_path}",
+        input_path
+    ]
+    
+    logger.info(f"Compressing PDF {input_path} to {output_path} using {pdf_setting} settings...")
+    
+    try:
+        process = await asyncio.create_subprocess_exec(
+            *gs_command,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        stdout, stderr = await process.communicate()
+        
+        if process.returncode == 0:
+            original_size = os.path.getsize(input_path)
+            new_size = os.path.getsize(output_path)
+            reduction = (original_size - new_size) / original_size * 100
+            logger.info(f"PDF compression successful. Size reduced from {original_size/1024/1024:.2f}MB to {new_size/1024/1024:.2f}MB ({reduction:.1f}% reduction).")
+            return True
+        else:
+            logger.error(f"Ghostscript failed with exit code {process.returncode}")
+            logger.error(f"GS STDERR: {stderr.decode()}")
+            return False
+    except Exception as e:
+        logger.error(f"Error during PDF compression: {e}", exc_info=True)
+        return False
+
+class JobQueue:
+    """A queue that limits concurrency and allows waiters to track their position."""
+    def __init__(self, max_concurrent=2):
+        self.max_concurrent = max_concurrent
+        self.active_count = 0
+        self.waiters = []  # List of (asyncio.Future, asyncio.Event)
+        self._change_event = asyncio.Event()
+
+    async def run_task(self, task_func, *args, update_callback=None, **kwargs):
+        """
+        Runs a task through the queue.
+        
+        Args:
+            task_func: The coroutine function to run.
+            update_callback: Optional async function that takes (position) as an argument.
+            *args, **kwargs: Arguments for task_func.
+        """
+        logger.info(f"JobQueue: New task submitted. Active: {self.active_count}/{self.max_concurrent}, Waiters: {len(self.waiters)}")
+        
+        # If we have space and nobody is waiting, go immediately
+        if self.active_count < self.max_concurrent and not self.waiters:
+            self.active_count += 1
+            logger.info(f"JobQueue: Fast-path. Starting task immediately. New active count: {self.active_count}")
+            try:
+                return await task_func(*args, **kwargs)
+            finally:
+                self._release()
+
+        # Otherwise, get in line
+        my_future = asyncio.get_event_loop().create_future()
+        self.waiters.append(my_future)
+        self._notify_change()
+        
+        pos = len(self.waiters)
+        logger.info(f"JobQueue: Task queued at position {pos}. Active: {self.active_count}")
+
+        try:
+            last_pos = pos
+            if update_callback:
+                await update_callback(last_pos)
+
+            while not my_future.done():
+                logger.info(f"JobQueue: Waiter (pos {last_pos}) waiting for turn or change event...")
+                # Wait for our turn OR for the queue to change
+                change_waiter = asyncio.create_task(self._change_event.wait())
+                done, pending = await asyncio.wait(
+                    [my_future, change_waiter],
+                    return_when=asyncio.FIRST_COMPLETED
+                )
+                
+                for t in pending:
+                    t.cancel()
+
+                if my_future.done():
+                    logger.info("JobQueue: Waiter's turn has arrived!")
+                    break
+                
+                # The queue moved, update our position
+                self._change_event.clear()
+                try:
+                    new_pos = self.waiters.index(my_future) + 1
+                    if new_pos != last_pos:
+                        logger.info(f"JobQueue: Waiter position updated: {last_pos} -> {new_pos}")
+                        last_pos = new_pos
+                        if update_callback:
+                            await update_callback(last_pos)
+                except ValueError:
+                    # We might have been popped and set_result called, but loop hasn't hit my_future.done()
+                    logger.info("JobQueue: Waiter no longer in waiters list, assuming turn is coming.")
+            
+            logger.info(f"JobQueue: Waiter starting task. Active: {self.active_count}")
+            return await task_func(*args, **kwargs)
+        finally:
+            if my_future in self.waiters:
+                self.waiters.remove(my_future)
+                self._notify_change()
+            self._release()
+
+    def _release(self):
+        """Called when a task finishes to let the next one in."""
+        self.active_count -= 1
+        self._maybe_start_next()
+
+    def _maybe_start_next(self):
+        """Starts the next task in the queue if space is available."""
+        while self.active_count < self.max_concurrent and self.waiters:
+            self.active_count += 1
+            next_waiter = self.waiters.pop(0)
+            if not next_waiter.done():
+                next_waiter.set_result(True)
+            self._notify_change()
+
+    def _notify_change(self):
+        """Notifies all waiters that the queue has changed."""
+        self._change_event.set()
+        # We don't clear it immediately, waiters will clear it after they see it
+
+    @property
+    def waiting_count(self):
+        return len(self.waiters)
+
+# Shared instance for archiver to ensure cross-module/cross-instance coordination
+shared_archive_queue = None
+
+def get_shared_archive_queue(max_concurrent=2):
+    global shared_archive_queue
+    if shared_archive_queue is None:
+        shared_archive_queue = JobQueue(max_concurrent=max_concurrent)
+    return shared_archive_queue
+
 from datetime import date, timedelta
 import calendar
 

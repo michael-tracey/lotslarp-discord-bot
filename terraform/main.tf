@@ -43,7 +43,7 @@ resource "google_compute_instance" "bot_vm" {
   boot_disk {
     initialize_params {
       image = "ubuntu-os-cloud/ubuntu-2204-lts"
-      size  = 10 # 10GB is enough for basic docker usage
+      size  = 10 # 10GB is enough for basic docker usage with regular pruning
       type  = "pd-standard"
     }
   }

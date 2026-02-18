@@ -18,6 +18,8 @@ class DigestNow:
         Forces an immediate digest send, bypassing thresholds.
         Usage: /digest-now
         """
+        logger.info(f"Command started: /digest-now by {message.author} in {message.channel}")
+
         # Check Permissions
         has_permission = False
         if isinstance(message.author, discord.Member):
@@ -27,6 +29,7 @@ class DigestNow:
                     break
         
         if not has_permission:
+            logger.warning(f"Permission denied for {message.author}")
             await message.channel.send("🚫 You do not have permission to run this command.")
             return
 
@@ -42,6 +45,7 @@ class DigestNow:
                 force=True
             )
             await message.add_reaction("✅")
+            logger.info("Immediate digest triggered successfully.")
         except Exception as e:
             logger.error(f"Error triggering digest-now: {e}", exc_info=True)
             await message.channel.send(f"❌ Failed to trigger digest: {e}")

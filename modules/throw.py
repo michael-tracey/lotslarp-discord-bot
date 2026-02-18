@@ -1,5 +1,8 @@
 import random
+import logging
 from jinja2 import Environment, FileSystemLoader
+
+logger = logging.getLogger(__name__)
 
 class Throw:
     def __init__(self):
@@ -7,6 +10,7 @@ class Throw:
 
     
     async def run(self, client, message):
+        logger.info(f"Command started: /throw by {message.author} in {message.channel}")
         user_name = message.author.name
         user_throw = message.content.split()[1].lower() if len(message.content.split()) > 1 else ""
 
@@ -29,6 +33,8 @@ class Throw:
             result = user_name + " wins!"
         else:
             result = "I win!"
+
+        logger.info(f"Throw result for {user_name}: User threw {user_throw}, Bot threw {bot_throw}. Outcome: {result}")
 
         template = self.template_env.get_template("throw_result.jinja2")  # Corrected template name
         return template.render(

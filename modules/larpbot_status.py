@@ -2,6 +2,9 @@ import os
 import discord
 import sqlite3
 import google.generativeai as genai
+import logging
+
+logger = logging.getLogger(__name__)
 
 class LarpbotStatus:
     def __init__(self, db_path, gemini_model):
@@ -40,6 +43,8 @@ class LarpbotStatus:
 
     async def run(self, client: discord.Client, message: discord.Message):
         """Runs the status checks and reports back."""
+        logger.info(f"Command started: /lotslarp status by {message.author} in {message.channel}")
+
         # Check Permissions
         has_permission = False
         if isinstance(message.author, discord.Member):
@@ -49,6 +54,7 @@ class LarpbotStatus:
                     break
         
         if not has_permission:
+            logger.warning(f"Permission denied for {message.author}")
             await message.channel.send("🚫 You do not have permission to run this command.")
             return
 
@@ -56,6 +62,8 @@ class LarpbotStatus:
         
         db_status = await self._test_db()
         ai_status = await self._test_ai()
+        
+        logger.info(f"Status check results - DB: {db_status}, AI: {ai_status}")
 
         embed = discord.Embed(
             title="Larp-Bot Status Report",
@@ -64,5 +72,9 @@ class LarpbotStatus:
         embed.add_field(name="Database Connection", value=db_status, inline=False)
         embed.add_field(name="Gemini AI Connection", value=ai_status, inline=False)
         
-        await message.channel.send(embed=embed)
+        try:
+            await message.channel.send(embed=embed)
+            logger.info("Status report sent successfully.")
+        except Exception as e:
+            logger.error(f"Failed to send status report: {e}", exc_info=True)
         return None

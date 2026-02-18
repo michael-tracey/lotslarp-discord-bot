@@ -77,7 +77,7 @@ class LoreManager:
         if not matched_doc_ids:
             return ""
 
-        logger.info(f"RAG Match Found! Keywords: {', '.join(matched_keywords)}")
+        logger.info(f"RAG Match Found! Keywords: {', '.join(matched_keywords)}. Found {len(matched_doc_ids)} unique lore entries.")
 
         # Retrieve content
         lore_entries = []

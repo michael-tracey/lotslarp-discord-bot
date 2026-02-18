@@ -1,0 +1,1257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LotsLarp Timeline Editor</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <style>
+        body {
+            font-family: sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #1a1a1a;
+            color: #eee;
+        }
+        h1 {
+            color: #ff4500;
+            text-align: center;
+        }
+        .container {
+            display: flex;
+            gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .left-sidebar, .right-sidebar {
+            width: 300px;
+            flex-shrink: 0;
+            background-color: #333;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-y: auto; /* Enable scrolling for the list */
+            max-height: calc(100vh - 40px); /* Limit height to viewport */
+        }
+        .editor-area {
+            flex-grow: 1;
+            background-color: #333;
+            padding: 15px;
+            border-radius: 8px;
+            display: none; /* Hidden by default */
+             overflow-y: auto; /* Enable scrolling for the editor content */
+             max-height: calc(100vh - 40px); /* Limit height to viewport */
+        }
+        h2 {
+            color: #ff4500;
+            text-align: center;
+            margin-top: 0;
+        }
+        #msa-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        #msa-list li {
+            background-color: #444;
+            margin-bottom: 5px;
+            padding: 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+        #msa-list li:hover {
+            background-color: #555;
+        }
+        #msa-list li.selected {
+            background-color: #ff4500;
+            color: white;
+        }
+
+        .map-container { /* Container for the map in the editor area */
+            width: 100%;
+            height: 300px; /* Adjust height as needed */
+            margin-bottom: 15px;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .map-container #selected-msa-map { /* Specific ID for the editor map */
+             width: 100%;
+             height: 100%;
+             background-color: #555;
+        }
+
+        .mini-map-container { /* Container for the mini-map in the left sidebar */
+            width: 100%;
+            height: 200px; /* Fixed height for the mini-map */
+            margin-bottom: 15px;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .mini-map-container #mini-map { /* Specific ID for the sidebar mini-map */
+             width: 100%;
+             height: 100%;
+             background-color: #555;
+        }
+
+        .timeline-entry {
+            background-color: #444;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            position: relative;
+        }
+        .timeline-entry input[type="number"],
+        .timeline-entry input[type="text"],
+        .timeline-entry select,
+        .timeline-entry textarea {
+            padding: 5px;
+            margin-right: 10px;
+            border-radius: 4px;
+            border: 1px solid #555;
+            background-color: #222;
+            color: #eee;
+            box-sizing: border-box;
+        }
+         .timeline-entry textarea {
+             width: calc(100% - 10px);
+             margin-top: 5px;
+             resize: vertical;
+             min-height: 60px;
+         }
+        .timeline-entry button {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+        .timeline-entry button:hover {
+            background-color: #c82333;
+        }
+        .add-entry-button {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            margin-top: 10px;
+        }
+        .add-entry-button:hover {
+            background-color: #218838;
+        }
+        .export-button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            margin-top: 20px;
+            display: block;
+            width: 100%;
+            text-align: center;
+        }
+        .export-button:hover {
+            background-color: #0056b3;
+        }
+         .file-input-section {
+             margin-bottom: 20px;
+             padding: 15px;
+             background-color: #444;
+             border-radius: 8px;
+         }
+         .file-input-section label {
+             margin-right: 10px;
+         }
+         .file-input-section input[type="file"] {
+             margin-top: 5px;
+         }
+         .validation-error {
+             color: #dc3545;
+             font-weight: bold;
+             margin-top: 10px;
+         }
+         .sidebar-controls {
+             margin-top: 15px;
+             display: flex;
+             flex-direction: column;
+             gap: 10px;
+         }
+         .sidebar-controls button {
+             padding: 8px 15px;
+             border-radius: 5px;
+             cursor: pointer;
+             transition: background-color 0.2s ease;
+         }
+         .sidebar-controls .add-msa-button {
+             background-color: #28a745;
+             color: white;
+             border: none;
+         }
+         .sidebar-controls .add-msa-button:hover {
+             background-color: #218838;
+         }
+         .sidebar-controls .remove-msa-button {
+             background-color: #dc3545;
+             color: white;
+             border: none;
+         }
+         .sidebar-controls .remove-msa-button:hover {
+             background-color: #c82333;
+         }
+         .rename-section {
+             margin-bottom: 15px;
+             padding: 10px;
+             background-color: #444;
+             border-radius: 4px;
+         }
+         .rename-section input[type="text"] {
+             padding: 5px;
+             border-radius: 4px;
+             border: 1px solid #555;
+             background-color: #222;
+             color: #eee;
+             margin-right: 10px;
+         }
+         .rename-section button {
+             background-color: #ffc107;
+             color: #212529;
+             border: none;
+             padding: 5px 10px;
+             border-radius: 4px;
+             cursor: pointer;
+             transition: background-color 0.2s ease;
+         }
+         .rename-section button:hover {
+             background-color: #e0a800;
+         }
+         .search-section {
+             margin-bottom: 15px;
+             padding: 10px;
+             background-color: #444;
+             border-radius: 8px;
+         }
+         .search-section input[type="text"] {
+             width: calc(100% - 22px); /* Adjust for padding/border */
+             padding: 5px;
+             border-radius: 4px;
+             border: 1px solid #555;
+             background-color: #222;
+             color: #eee;
+         }
+         .bulk-edit-section {
+             margin-top: 20px;
+             padding: 15px;
+             background-color: #444;
+             border-radius: 8px;
+         }
+         .bulk-edit-section h3 {
+             margin-top: 0;
+             color: #ff4500;
+         }
+         .bulk-edit-section input[type="number"] {
+             padding: 5px;
+             margin-right: 10px;
+             border-radius: 4px;
+             border: 1px solid #555;
+             background-color: #222;
+             color: #eee;
+         }
+         .bulk-edit-section button {
+             background-color: #17a2b8;
+             color: white;
+             border: none;
+             padding: 8px 15px;
+             border-radius: 5px;
+             cursor: pointer;
+             transition: background-color 0.2s ease;
+         }
+         .bulk-edit-section button:hover {
+             background-color: #138496;
+         }
+          .timeline-entry-buttons {
+              margin-top: 5px;
+          }
+           .timeline-entry-buttons button {
+               padding: 3px 8px;
+               font-size: 0.9em;
+               margin-right: 5px;
+           }
+           .timeline-entry-buttons .add-below-button {
+               background-color: #28a745;
+               color: white;
+               border: none;
+           }
+            .timeline-entry-buttons .add-below-button:hover {
+                background-color: #218838;
+            }
+         .add-missing-msa-section {
+             margin-top: 15px;
+             padding: 15px;
+             background-color: #444;
+             border-radius: 8px;
+         }
+          .add-missing-msa-section select {
+              padding: 5px;
+              margin-right: 10px;
+              border-radius: 4px;
+              border: 1px solid #555;
+              background-color: #222;
+              color: #eee;
+              width: calc(100% - 30px); /* Adjust width */
+          }
+           .add-missing-msa-section button {
+               background-color: #28a745;
+               color: white;
+               border: none;
+               padding: 5px 10px;
+               border-radius: 4px;
+               cursor: pointer;
+               transition: background-color 0.2s ease;
+           }
+            .add-missing-msa-section button:hover {
+                background-color: #218838;
+            }
+         .clone-section { /* New section for cloning */
+             margin-bottom: 15px;
+             padding: 10px;
+             background-color: #444;
+             border-radius: 4px;
+         }
+         .clone-section select {
+             padding: 5px;
+             margin-right: 10px;
+             border-radius: 4px;
+             border: 1px solid #555;
+             background-color: #222;
+             color: #eee;
+             width: calc(100% - 30px); /* Adjust width */
+         }
+          .clone-section button {
+              background-color: #ffc107;
+              color: #212529;
+              border: none;
+              padding: 5px 10px;
+              border-radius: 4px;
+              cursor: pointer;
+              transition: background-color 0.2s ease;
+          }
+           .clone-section button:hover {
+               background-color: #e0a800;
+           }
+    </style>
+</head>
+<body>
+
+    <h1>LotsLarp Timeline Data Editor</h1>
+
+    <div class="container">
+        <div class="left-sidebar">
+            <!-- File input removed, auto-loading from DB -->
+             <div class="sidebar-controls">
+                 <button class="add-msa-button" id="add-msa">Add New MSA (Manual)</button>
+                 <button class="remove-msa-button" id="remove-msa">Remove Selected MSA</button>
+             </div>
+             <div class="mini-map-container">
+                <div id="mini-map"></div>
+            </div>
+             <div class="search-section">
+                 <input type="text" id="msa-search" placeholder="Search MSAs...">
+             </div>
+             <div class="add-missing-msa-section">
+                 <h3>Add Missing MSA</h3>
+                 <select id="missing-msa-select">
+                     <option value="">Select an MSA</option>
+                     </select>
+                 <button id="add-missing-msa-button">Add Selected MSA</button>
+             </div>
+        </div>
+
+        <div class="editor-area" id="editor-area">
+             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding: 10px; background-color: #444; border-radius: 4px;">
+                 <h2 id="editor-header-msa-name" style="margin: 0; color: #ff4500;">Editing: </h2>
+                 <div style="display: flex; gap: 10px; align-items: center;">
+                     <div id="msa-save-status" style="font-weight: bold;"></div>
+                     <button id="save-msa-btn" class="add-entry-button" style="margin: 0; background-color: #007bff;">Save Changes</button>
+                 </div>
+             </div>
+             <div class="rename-section">
+                 <!-- H2 removed, using top header -->
+                 <input type="text" class="rename-msa-input" id="rename-msa-input" placeholder="New name for selected MSA">
+                 <button class="rename-msa-button" id="rename-msa-button">Rename MSA</button>
+             </div>
+             <div class="clone-section"> <!-- New section for cloning -->
+                 <h3>Clone Timeline From:</h3>
+                 <select id="clone-source-select">
+                     <option value="">Select MSA to Clone From</option>
+                     </select>
+                 <button id="clone-timeline-button">Clone Timeline</button>
+             </div>
+             <div class="map-container"> <!-- Container for the map showing the selected MSA -->
+                 <div id="selected-msa-map"></div> <!-- Map for the selected MSA -->
+             </div>
+            <div id="timeline-editor-content">
+                </div>
+            <button class="add-entry-button" id="add-timeline-entry">Add Timeline Entry (at end)</button>
+             <div class="bulk-edit-section">
+                 <h3>Bulk Edit Timeline</h3>
+                 Shift dates by: <input type="number" id="bulk-shift-years" value="0"> years
+                 <button id="apply-bulk-shift">Apply Shift</button>
+             </div>
+
+             <div class="validation-error" id="validation-error"></div>
+        </div>
+
+        <div class="right-sidebar">
+            <h2>MSAs</h2>
+            <ul id="msa-list">
+                </ul>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        let timelineData = []; // Holds the loaded timeline data
+        let msaGeoJSON = null; // Holds the loaded GeoJSON data
+        let miniMap = null; // Leaflet map instance for the mini-map (all MSAs)
+        let allMsaLayer = null; // Layer for all MSAs on the mini-map
+        let selectedMsaMap = null; // Leaflet map instance for the selected MSA
+        let selectedMsaLayer = null; // Layer for the selected MSA on its map
+
+
+        const availableSects = [
+            "Sabbat",
+            "Camarilla",
+            "Anarchs",
+            "Independent Alliance",
+            "Vodouists",
+            "Southern Lords",
+            "Contested",
+            "Unclaimed",
+            "Unknown"
+        ];
+
+
+        const msaListElement = document.getElementById('msa-list');
+        const editorArea = document.getElementById('editor-area');
+        const editorMsaName = document.getElementById('editor-header-msa-name');
+        const timelineEditorContent = document.getElementById('timeline-editor-content');
+        const addTimelineEntryButton = document.getElementById('add-timeline-entry');
+        const validationErrorDiv = document.getElementById('validation-error');
+        const addMsaButton = document.getElementById('add-msa');
+        const removeMsaButton = document.getElementById('remove-msa');
+        const renameMsaInput = document.getElementById('rename-msa-input');
+        const renameMsaButton = document.getElementById('rename-msa-button');
+        const msaSearchInput = document.getElementById('msa-search');
+        const bulkShiftYearsInput = document.getElementById('bulk-shift-years');
+        const applyBulkShiftButton = document.getElementById('apply-bulk-shift');
+        const miniMapContainer = document.querySelector('.mini-map-container'); // Get the mini-map container
+        const missingMsaSelect = document.getElementById('missing-msa-select');
+        const addMissingMsaButton = document.getElementById('add-missing-msa-button');
+        const cloneTimelineButton = document.getElementById('clone-timeline-button');
+        const selectedMsaMapContainer = document.querySelector('.map-container'); // Get the selected MSA map container
+        const cloneSourceSelect = document.getElementById('clone-source-select'); // Get the clone source dropdown
+
+
+        // Define the bounding box for filtering MSAs
+        const southWestBound = L.latLng(22.4970361396, -98.034689445);
+        const northEastBound = L.latLng(40.0887528861, -69.9140855856);
+        const boundingBox = L.latLngBounds(southWestBound, northEastBound);
+
+
+        // Function to load the MSA GeoJSON data (assuming it's needed for mini-map)
+        function loadMsaGeoJSON() {
+            const dropdown = document.getElementById('missing-msa-select');
+            if (dropdown) dropdown.innerHTML = '<option>Loading Map Data...</option>';
+
+            console.log("Fetching MSA GeoJSON...");
+            fetch('https://raw.githubusercontent.com/loganpowell/census-geojson/master/GeoJSON/20m/2017/metropolitan-statistical-area!micropolitan-statistical-area.json')
+                .then(response => {
+                    if (!response.ok) throw new Error("Network response was not ok: " + response.statusText);
+                    return response.json();
+                })
+                .then(data => {
+                    console.log("MSA GeoJSON fetch complete. Features count:", data.features ? data.features.length : 'none');
+                    msaGeoJSON = data;
+                    
+                    // Pre-filter features by bounding box to speed up everything else
+                    if (msaGeoJSON && msaGeoJSON.features) {
+                        const allFeatures = msaGeoJSON.features;
+                        msaGeoJSON.features = allFeatures.filter(feature => {
+                            try {
+                                if (feature.geometry && feature.geometry.coordinates) {
+                                    const layer = L.geoJson(feature);
+                                    const layerBounds = layer.getBounds();
+                                    return boundingBox.intersects(layerBounds);
+                                }
+                            } catch (e) {
+                                console.warn("Error filtering feature:", feature.properties.NAME, e);
+                            }
+                            return false;
+                        });
+                        console.log("Filtered to", msaGeoJSON.features.length, "features within Southeast bounding box.");
+                    }
+
+                    try {
+                        initializeMiniMap();
+                    } catch (e) {
+                        console.error("Error initializing mini-map:", e);
+                    }
+                    
+                    populateMissingMsasDropdown();
+                    populateCloneSourceDropdown();
+                })
+                .catch(error => {
+                    console.error('Error loading MSA GeoJSON:', error);
+                    if (dropdown) dropdown.innerHTML = '<option>Error loading Map Data</option>';
+                    alert("Failed to load background map data. The 'Add Missing MSA' feature may be limited. Error: " + error.message);
+                });
+        }
+
+         // Function to initialize the mini-map in the sidebar
+         function initializeMiniMap() {
+             if (miniMap) {
+                 miniMap.remove();
+                 miniMap = null;
+             }
+
+             const mapElement = document.getElementById('mini-map');
+             if (!mapElement) return;
+
+             miniMap = L.map('mini-map', {
+                 zoomControl: false,
+                 attributionControl: false,
+                 interactive: true
+             });
+
+             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                 maxZoom: 18,
+             }).addTo(miniMap);
+
+             if (msaGeoJSON && msaGeoJSON.features) {
+                 allMsaLayer = L.geoJson(msaGeoJSON, {
+                     style: function(feature) {
+                         const msaName = feature.properties.NAME;
+                         const isLoaded = timelineData.some(msa => msa.name === msaName);
+                         return {
+                             fillColor: isLoaded ? '#ff4500' : '#ffff00',
+                             weight: isLoaded ? 2 : 1,
+                             opacity: 1,
+                             color: isLoaded ? '#ff0000' : '#000000',
+                             dashArray: isLoaded ? '1' : '3',
+                             fillOpacity: isLoaded ? 0.7 : 0.3
+                         };
+                     },
+                     onEachFeature: function (feature, layer) {
+                         const msaName = feature.properties.NAME;
+                         const isLoaded = timelineData.some(msa => msa.name === msaName);
+
+                         if (isLoaded) {
+                             layer.on('click', function() {
+                                 const msaIndex = timelineData.findIndex(item => item.name === msaName);
+                                 const listItem = msaListElement.querySelector(`li[data-original-index="${msaIndex}"]`);
+                                 if (listItem) {
+                                     listItem.click();
+                                 }
+                             });
+                         } else {
+                             layer.on('click', function() {
+                                 missingMsaSelect.value = msaName;
+                             });
+                         }
+                     }
+                 }).addTo(miniMap);
+
+                 miniMap.fitBounds(boundingBox);
+             }
+         }
+
+        // Function to initialize or update the map for the selected MSA in the editor area
+        function initializeSelectedMsaMap(msaName) {
+            if (!msaGeoJSON) {
+                console.warn("MSA GeoJSON not loaded, cannot display selected MSA map.");
+                return;
+            }
+
+            const msaFeature = msaGeoJSON.features.find(feature => feature.properties.NAME === msaName);
+
+            if (!msaFeature) {
+                console.warn(`GeoJSON feature not found for MSA: ${msaName}. Selected MSA map will not display.`);
+                // Clear map container if feature not found
+                if (selectedMsaMap) {
+                    selectedMsaMap.remove();
+                    selectedMsaMap = null;
+                }
+                document.getElementById('selected-msa-map').innerHTML = ''; // Clear map container
+                return;
+            }
+
+            if (!selectedMsaMap) {
+                // Initialize the map if it doesn't exist
+                selectedMsaMap = L.map('selected-msa-map', {
+                    zoomControl: true, // Show zoom controls
+                    attributionControl: false, // Hide attribution
+                    interactive: false // Disable interaction
+                });
+
+                // Add a basic tile layer
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 18,
+                }).addTo(selectedMsaMap);
+            } else {
+                // Clear previous layer if map exists
+                if (selectedMsaLayer) {
+                    selectedMsaMap.removeLayer(selectedMsaLayer);
+                }
+            }
+
+            // Add the selected MSA polygon to the map
+            selectedMsaLayer = L.geoJson(msaFeature, {
+                 style: {
+                     fillColor: '#ff4500', // Highlight color
+                     weight: 2,
+                     opacity: 1,
+                     color: 'white',
+                     dashArray: '3',
+                     fillOpacity: 0.7
+                 }
+            }).addTo(selectedMsaMap);
+
+            // Fit the map to the bounds of the selected polygon
+            selectedMsaMap.fitBounds(selectedMsaLayer.getBounds());
+        }
+
+
+        // Function to populate the MSA list (with optional filtering)
+        function populateMsaList(filterText = '') {
+            msaListElement.innerHTML = ''; // Clear existing list
+            const filteredData = timelineData.filter(msa =>
+                msa.name.toLowerCase().includes(filterText.toLowerCase())
+            );
+            // Sort filtered data alphabetically by name
+            filteredData.sort((a, b) => a.name.localeCompare(b.name));
+
+            filteredData.forEach((msa, index) => {
+                const listItem = document.createElement('li');
+                listItem.textContent = msa.name;
+                // Store the original index in timelineData, not the filtered index
+                listItem.dataset.originalIndex = timelineData.findIndex(item => item.name === msa.name);
+                listItem.addEventListener('click', handleMsaSelect);
+                msaListElement.appendChild(listItem);
+            });
+        }
+
+        // Function to handle MSA selection from the list
+        function handleMsaSelect(event) {
+            // Remove selected class from previous item
+            const selectedItem = msaListElement.querySelector('li.selected');
+            if (selectedItem) {
+                selectedItem.classList.remove('selected');
+            }
+
+            // Add selected class to the clicked item
+            event.target.classList.add('selected');
+
+            const msaIndex = parseInt(event.target.dataset.originalIndex); // Use originalIndex
+            const selectedMsa = timelineData[msaIndex];
+
+            editorArea.style.display = 'block'; // Show the editor area
+            editorMsaName.textContent = `Editing: ${selectedMsa.name}`;
+            renameMsaInput.value = selectedMsa.name; // Set rename input value
+            renderTimelineEditor(selectedMsa.timeline);
+            updateMiniMap(selectedMsa.name); // Highlight on mini-map
+            initializeSelectedMsaMap(selectedMsa.name); // Initialize/update map for selected MSA
+             validationErrorDiv.textContent = ''; // Clear previous validation errors
+        }
+
+        // Function to render the timeline editor content
+        function renderTimelineEditor(timeline) {
+            timelineEditorContent.innerHTML = ''; // Clear existing entries
+
+            timeline.forEach((entry, index) => {
+                const entryDiv = document.createElement('div');
+                entryDiv.classList.add('timeline-entry');
+                entryDiv.dataset.index = index;
+
+                let sectDropdownHtml = '<select class="entry-sect">';
+                availableSects.forEach(sect => {
+                    sectDropdownHtml += `<option value="${sect}" ${entry.sect === sect ? 'selected' : ''}>${sect}</option>`;
+                });
+                sectDropdownHtml += '</select>';
+
+                entryDiv.innerHTML = `
+                    Start: <input type="text" class="entry-start" value="${entry.start}" maxlength="4">
+                    End: <input type="text" class="entry-end" value="${entry.end}" maxlength="4">
+                    Sect: ${sectDropdownHtml}
+                    <br>
+                    Description: <textarea class="entry-description">${entry.description || ''}</textarea>
+                    <div class="timeline-entry-buttons">
+                        <button class="remove-entry">Remove</button>
+                        <button class="add-below-button">Add Below</button>
+                    </div>
+                `;
+
+                entryDiv.querySelector('.remove-entry').addEventListener('click', handleRemoveEntry);
+                entryDiv.querySelector('.add-below-button').addEventListener('click', handleAddEntryBelow); // Add listener for Add Below
+
+                // Add input and change listeners to all relevant fields
+                entryDiv.querySelectorAll('input[type="text"], textarea, select').forEach(input => {
+                     input.addEventListener('input', handleEntryInput);
+                     input.addEventListener('change', handleEntryChange);
+                });
+
+                // Add keydown listener to date text fields to prevent backspace navigation
+                entryDiv.querySelectorAll('.entry-start, .entry-end').forEach(input => {
+                     input.addEventListener('keydown', function(event) {
+                         if (event.key === 'Backspace') {
+                             event.stopPropagation();
+                         }
+                     });
+                });
+
+                timelineEditorContent.appendChild(entryDiv);
+            });
+        }
+
+         // Function to handle input events (for text fields and textareas)
+         function handleEntryInput(event) {
+             const entryDiv = event.target.closest('.timeline-entry');
+             const entryIndex = parseInt(entryDiv.dataset.index);
+             const selectedMsaIndex = parseInt(msaListElement.querySelector('li.selected').dataset.originalIndex); // Use originalIndex
+             const selectedMsa = timelineData[selectedMsaIndex];
+
+             const inputElement = event.target;
+             const className = inputElement.classList[0]; // Get the class like 'entry-start', 'entry-end', 'entry-sect', or 'entry-description'
+             let newValue = inputElement.value;
+
+             // For date fields, attempt to parse as integer, but store as string if invalid for user to correct
+             if (className === 'entry-start' || className === 'entry-end') {
+                 const parsedValue = parseInt(inputElement.value);
+                 newValue = isNaN(parsedValue) ? inputElement.value : parsedValue;
+             }
+
+             // Update the current entry's value directly
+             selectedMsa.timeline[entryIndex][className.replace('entry-', '')] = newValue;
+
+             // No re-rendering or sorting on every input for text fields/textareas
+             // Validation will happen on export
+         }
+
+
+        // Function to handle changes in timeline entry inputs (fallback/for textareas and when input fields loses focus)
+        function handleEntryChange(event) {
+             const entryDiv = event.target.closest('.timeline-entry');
+             const entryIndex = parseInt(entryDiv.dataset.index); // Parse index as integer
+             const selectedMsaIndex = parseInt(msaListElement.querySelector('li.selected').dataset.originalIndex); // Use originalIndex
+             const selectedMsa = timelineData[selectedMsaIndex];
+
+             const inputElement = event.target;
+             const className = inputElement.classList[0];
+
+             let newValue = inputElement.value;
+
+             // For date fields, attempt to parse as integer, but store as string if invalid for user to correct
+             if (className === 'entry-start' || className === 'entry-end') {
+                 const parsedValue = parseInt(inputElement.value);
+                 newValue = isNaN(parsedValue) ? inputElement.value : parsedValue;
+             }
+
+             selectedMsa.timeline[entryIndex][className.replace('entry-', '')] = newValue;
+
+             // Re-sort and re-render after changes that might affect order (like date changes)
+             // This is done here because 'change' event fires after input loses focus or for textarea changes
+             selectedMsa.timeline.sort((a, b) => a.start - b.start);
+             renderTimelineEditor(selectedMsa.timeline); // Re-render to reflect sorting and update data-indices
+        }
+
+
+        // Function to handle removing a timeline entry
+        function handleRemoveEntry(event) {
+            const entryDiv = event.target.closest('.timeline-entry');
+            const entryIndex = parseInt(entryDiv.dataset.index); // Parse index as integer
+            const selectedMsaIndex = parseInt(msaListElement.querySelector('li.selected').dataset.originalIndex); // Use originalIndex
+            const selectedMsa = timelineData[selectedMsaIndex];
+
+            selectedMsa.timeline.splice(entryIndex, 1); // Remove the entry
+            renderTimelineEditor(selectedMsa.timeline); // Re-render the editor
+             // renderTimelineEditor also updates originalTimelineState and data-indices
+        }
+
+        // Function to handle adding a new timeline entry
+        function handleAddTimelineEntry() {
+            const selectedItem = msaListElement.querySelector('li.selected');
+            if (!selectedItem) {
+                alert("Please select an MSA to add a timeline entry.");
+                return;
+            }
+            const selectedMsaIndex = parseInt(selectedItem.dataset.originalIndex); // Use originalIndex
+            const selectedMsa = timelineData[selectedMsaIndex];
+
+            // Add a default new entry at the end
+            selectedMsa.timeline.push({
+                start: 2025,
+                end: 2025,
+                sect: "Unknown",
+                description: ""
+            });
+
+            // Re-sort and re-render
+            selectedMsa.timeline.sort((a, b) => a.start - b.start);
+            renderTimelineEditor(selectedMsa.timeline);
+             // renderTimelineEditor also updates originalTimelineState and data-indices
+        }
+
+        // Function to handle adding a new timeline entry below an existing one
+        function handleAddEntryBelow(event) {
+            const entryDiv = event.target.closest('.timeline-entry');
+            const entryIndex = parseInt(entryDiv.dataset.index); // Index of the entry below which to add
+            const selectedMsaIndex = parseInt(msaListElement.querySelector('li.selected').dataset.originalIndex); // Use originalIndex
+            const selectedMsa = timelineData[selectedMsaIndex];
+
+            // Create a default new entry
+            const newEntry = {
+                start: selectedMsa.timeline[entryIndex].end, // Start after the current entry ends
+                end: selectedMsa.timeline[entryIndex].end + 1, // Default end to one year later
+                sect: "Unknown",
+                description: ""
+            };
+
+            // Insert the new entry after the current one
+            selectedMsa.timeline.splice(entryIndex + 1, 0, newEntry);
+
+            // Re-sort and re-render
+            selectedMsa.timeline.sort((a, b) => a.start - b.start);
+            renderTimelineEditor(selectedMsa.timeline);
+             // renderTimelineEditor also updates originalTimelineState and data-indices
+        }
+
+
+        // Function to handle adding a new MSA manually
+        function handleAddMsa() {
+            const newMsaName = prompt("Enter the name for the new MSA:");
+            if (newMsaName && newMsaName.trim() !== "") {
+                const trimmedName = newMsaName.trim();
+                // Check if an MSA with this name already exists
+                if (timelineData.some(msa => msa.name === trimmedName)) {
+                    alert(`An MSA with the name "${trimmedName}" already exists.`);
+                    return;
+                }
+
+                const newMsa = {
+                    name: trimmedName,
+                    timeline: [
+                        { start: 1495, end: 2025, sect: "Unknown", description: "Initial Unknown period." }
+                    ]
+                };
+                timelineData.push(newMsa);
+                populateMsaList(msaSearchInput.value); // Re-populate the list, applying current filter
+                 // Select the newly added MSA (find its new index after sorting)
+                const newIndex = timelineData.findIndex(msa => msa.name === trimmedName);
+                if (newIndex !== -1) {
+                    const newItem = msaListElement.querySelector(`li[data-original-index="${newIndex}"]`); // Use originalIndex
+                    if (newItem) {
+                        newItem.click(); // Simulate click to select and open editor
+                    }
+                }
+            }
+        }
+
+         // Function to handle adding a missing MSA from the dropdown
+         function handleAddMissingMsa() {
+             const selectedMsaName = missingMsaSelect.value;
+             if (selectedMsaName && selectedMsaName !== "") {
+                 // Check if an MSA with this name already exists in timelineData
+                 if (timelineData.some(msa => msa.name === selectedMsaName)) {
+                     alert(`An MSA with the name "${selectedMsaName}" already exists in your timeline data.`);
+                     return;
+                 }
+
+                 // Find the GeoJSON feature for the selected MSA to get its coordinates
+                 const msaFeature = msaGeoJSON.features.find(feature => feature.properties.NAME === selectedMsaName);
+
+                 const newMsa = {
+                     name: selectedMsaName,
+                     timeline: [
+                         { start: 1495, end: 2025, sect: "Unknown", description: "Initial Unknown period." }
+                     ]
+                     // Optionally add coords if it's a point and you want to store it
+                     // coords: msaFeature && msaFeature.geometry.type === 'Point' ? msaFeature.geometry.coordinates.reverse() : undefined // GeoJSON is [lon, lat], Leaflet is [lat, lon]
+                 };
+
+                 timelineData.push(newMsa);
+                 populateMsaList(msaSearchInput.value); // Re-populate the list
+                 populateMissingMsasDropdown(); // Update the missing MSAs dropdown
+                 populateCloneSourceDropdown(); // Update the clone source dropdown
+                 // Select the newly added MSA
+                 const newIndex = timelineData.findIndex(msa => msa.name === selectedMsaName);
+                 if (newIndex !== -1) {
+                     const newItem = msaListElement.querySelector(`li[data-original-index="${newIndex}"]`);
+                     if (newItem) {
+                         newItem.click(); // Simulate click to select and open editor
+                     }
+                 }
+             } else {
+                 alert("Please select an MSA to add.");
+             }
+         }
+
+
+        // Function to save timeline data to the database
+        function saveToDatabase() {
+            const validationErrors = validateTimelineData(timelineData);
+            if (validationErrors.length > 0) {
+                validationErrorDiv.innerHTML = 'Validation Errors:<br>' + validationErrors.join('<br>');
+                return Promise.reject(new Error("Validation failed"));
+            } else {
+                validationErrorDiv.textContent = '';
+            }
+
+            const statusDiv = document.getElementById('msa-save-status');
+            if (statusDiv) {
+                statusDiv.textContent = "Saving...";
+                statusDiv.style.color = "#ffc107"; // Yellow
+            }
+
+            return fetch('/api/save-timeline-data', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(timelineData)
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                } else {
+                    return response.json().then(err => { throw new Error(err.error || "Unknown error"); });
+                }
+            })
+            .then(data => {
+                console.log("Save successful:", data);
+                if (statusDiv) {
+                    statusDiv.textContent = "Saved successfully!";
+                    statusDiv.style.color = "#28a745"; // Green
+                    setTimeout(() => { statusDiv.textContent = ""; }, 3000);
+                }
+                return data;
+            })
+            .catch(error => {
+                console.error("Error saving data:", error);
+                if (statusDiv) {
+                    statusDiv.textContent = "Error saving: " + error.message;
+                    statusDiv.style.color = "#dc3545"; // Red
+                }
+                throw error;
+            });
+        }
+
+        // Function to handle removing the selected MSA
+        function handleRemoveMsa() {
+            const selectedItem = msaListElement.querySelector('li.selected');
+            if (selectedItem) {
+                const msaIndex = parseInt(selectedItem.dataset.originalIndex); // Use originalIndex
+                const msaName = timelineData[msaIndex].name;
+                if (confirm(`Are you sure you want to remove the MSA "${msaName}"? This will update the database immediately.`)) {
+                    // 1. Remove locally
+                    timelineData.splice(msaIndex, 1);
+                    
+                    // 2. Save to database
+                    saveToDatabase()
+                    .then(() => {
+                        alert(`MSA "${msaName}" removed and database updated.`);
+                        
+                        // 3. Update UI only after successful save
+                        populateMsaList(msaSearchInput.value); // Re-populate the list
+                        populateMissingMsasDropdown(); // Update the missing MSAs dropdown
+                        populateCloneSourceDropdown(); // Update the clone source dropdown
+                        editorArea.style.display = 'none'; // Hide editor area
+                        
+                        if (miniMap) { // Remove mini-map if it exists
+                             miniMap.remove();
+                             miniMap = null;
+                        }
+                        document.getElementById('mini-map').innerHTML = ''; // Clear map container
+                        
+                        if (selectedMsaMap) { // Remove selected MSA map if it exists
+                             selectedMsaMap.remove();
+                             selectedMsaMap = null;
+                        }
+                        document.getElementById('selected-msa-map').innerHTML = ''; // Clear map container
+                        validationErrorDiv.textContent = ''; // Clear any validation errors
+                        
+                        // Re-init mini map to reflect changes
+                        initializeMiniMap();
+                    })
+                    .catch(error => {
+                        alert("Failed to save changes to database: " + error.message);
+                        // Ideally we should revert the local change here, but for now we let the user know.
+                        // A reload would fix the state mismatch.
+                        console.error(error);
+                    });
+                }
+            } else {
+                alert("Please select an MSA to remove.");
+            }
+        }
+
+        // Function to load timeline data from the server
+        function loadTimelineDataFromServer() {
+            fetch('vampire-timeline-data.json')
+                .then(response => {
+                    if (!response.ok) throw new Error("Failed to fetch data");
+                    return response.json();
+                })
+                .then(data => {
+                    timelineData = data;
+                    console.log("Timeline data loaded successfully from server.");
+                    populateMsaList();
+                    populateMissingMsasDropdown();
+                    populateCloneSourceDropdown();
+                    initializeMiniMap(); // Ensure mini-map is updated
+                })
+                .catch(error => {
+                    console.error("Error loading timeline data:", error);
+                    alert("Error loading data from server. Check console.");
+                });
+        }
+
+         // Function to get a list of MSAs in GeoJSON but not in timelineData
+         function getMissingMsas() {
+             if (!msaGeoJSON) return [];
+
+             const timelineMsaNames = new Set(timelineData.map(msa => msa.name));
+             const geoJsonMsaNames = msaGeoJSON.features
+                 .filter(feature => feature.properties && feature.properties.NAME) // Ensure properties and NAME exist
+                 .map(feature => feature.properties.NAME);
+
+             const missingMsas = geoJsonMsaNames.filter(name => !timelineMsaNames.has(name));
+
+             // Sort missing MSAs alphabetically
+             missingMsas.sort();
+
+             return missingMsas;
+         }
+
+         // Function to populate the missing MSAs dropdown
+         function populateMissingMsasDropdown() {
+             const dropdown = document.getElementById('missing-msa-select');
+             if (!dropdown) return;
+             dropdown.innerHTML = '';
+             
+             if (!msaGeoJSON) {
+                 dropdown.innerHTML = '<option>Waiting for map data...</option>';
+                 return;
+             }
+
+             const missingMsas = getMissingMsas();
+             
+             if (missingMsas.length === 0) {
+                 dropdown.innerHTML = '<option value="">All MSAs added</option>';
+                 return;
+             }
+
+             dropdown.innerHTML = '<option value="">Select an MSA</option>'; // Clear and add default option
+             missingMsas.forEach(name => {
+                 const option = document.createElement('option');
+                 option.value = name;
+                 option.textContent = name;
+                 dropdown.appendChild(option);
+             });
+         }
+
+         // Function to populate the clone source dropdown
+         function populateCloneSourceDropdown() {
+             const dropdown = document.getElementById('clone-source-select');
+             if (!dropdown) return;
+             dropdown.innerHTML = '<option value="">Select MSA to Clone From</option>';
+             
+             // Create a sorted copy of timelineData for the dropdown
+             const sortedData = [...timelineData].sort((a, b) => a.name.localeCompare(b.name));
+             
+             sortedData.forEach(msa => {
+                 const option = document.createElement('option');
+                 option.value = msa.name;
+                 option.textContent = msa.name;
+                 dropdown.appendChild(option);
+             });
+         }
+
+        // Function to handle renaming an MSA
+        function handleRenameMsa() {
+            const selectedItem = msaListElement.querySelector('li.selected');
+            if (!selectedItem) {
+                alert("Please select an MSA to rename.");
+                return;
+            }
+            
+            const msaIndex = parseInt(selectedItem.dataset.originalIndex);
+            const newName = renameMsaInput.value.trim();
+            
+            if (!newName) {
+                alert("Please enter a valid name.");
+                return;
+            }
+            
+            // Check for duplicate name (excluding the current MSA)
+            if (timelineData.some((msa, idx) => msa.name === newName && idx !== msaIndex)) {
+                alert(`An MSA with the name "${newName}" already exists.`);
+                return;
+            }
+            
+            // Update name
+            const oldName = timelineData[msaIndex].name;
+            timelineData[msaIndex].name = newName;
+            
+            // Update UI
+            editorMsaName.textContent = `Editing: ${newName}`;
+            populateMsaList(msaSearchInput.value);
+            
+            // Re-select the item in the list
+            // Note: index might change in filtered list due to sorting, but originalIndex remains valid until next save/load might reorder? 
+            // Actually populateMsaList re-creates list items. We need to find the item with the same originalIndex.
+            const newItem = msaListElement.querySelector(`li[data-original-index="${msaIndex}"]`);
+            if (newItem) {
+                newItem.classList.add('selected');
+                newItem.scrollIntoView({ block: 'nearest' });
+            }
+            
+            populateCloneSourceDropdown(); // Update clone list with new name
+            
+            // If map is showing, update it (though geometry hasn't changed, name has)
+            // If we relied on name to find feature, we might need to be careful. 
+            // But initializeSelectedMsaMap uses the NAME from GeoJSON. 
+            // If we renamed the MSA to something NOT in GeoJSON, the map might break or clear.
+            // If the user is renaming "New York" to "NYC", and "NYC" isn't in GeoJSON, the map will disappear.
+            // That's acceptable behavior for manual overrides.
+            initializeSelectedMsaMap(newName);
+            updateMiniMap(newName);
+        }
+
+        // Function to handle cloning a timeline
+        function handleCloneTimeline() {
+            const selectedItem = msaListElement.querySelector('li.selected');
+            if (!selectedItem) {
+                alert("Please select an MSA to edit first.");
+                return;
+            }
+            
+            const sourceMsaName = document.getElementById('clone-source-select').value;
+            if (!sourceMsaName) {
+                alert("Please select a source MSA to clone from.");
+                return;
+            }
+            
+            const sourceMsa = timelineData.find(msa => msa.name === sourceMsaName);
+            if (!sourceMsa) {
+                alert("Source MSA data not found.");
+                return;
+            }
+            
+            if (confirm(`Are you sure you want to replace the timeline for the current MSA with the timeline from "${sourceMsaName}"? This action cannot be undone.`)) {
+                const msaIndex = parseInt(selectedItem.dataset.originalIndex);
+                
+                // Deep copy the timeline array
+                timelineData[msaIndex].timeline = JSON.parse(JSON.stringify(sourceMsa.timeline));
+                
+                renderTimelineEditor(timelineData[msaIndex].timeline);
+                alert("Timeline cloned successfully.");
+            }
+        }
+
+        // Function to handle MSA search input
+        function handleMsaSearchInput(event) {
+            populateMsaList(event.target.value);
+        }
+
+        // Function to apply bulk date shift
+        function handleApplyBulkShift() {
+            const selectedItem = msaListElement.querySelector('li.selected');
+            if (!selectedItem) {
+                alert("Please select an MSA to edit.");
+                return;
+            }
+            
+            const shiftAmount = parseInt(document.getElementById('bulk-shift-years').value);
+            if (isNaN(shiftAmount) || shiftAmount === 0) {
+                alert("Please enter a valid non-zero number of years to shift.");
+                return;
+            }
+            
+            const msaIndex = parseInt(selectedItem.dataset.originalIndex);
+            const timeline = timelineData[msaIndex].timeline;
+            
+            if (confirm(`Shift all dates in this timeline by ${shiftAmount} years?`)) {
+                timeline.forEach(entry => {
+                    // Start date
+                    let startVal = parseInt(entry.start);
+                    if (!isNaN(startVal)) {
+                        entry.start = startVal + shiftAmount;
+                    }
+                    
+                    // End date
+                    let endVal = parseInt(entry.end);
+                    if (!isNaN(endVal)) {
+                        entry.end = endVal + shiftAmount;
+                    }
+                });
+                
+                renderTimelineEditor(timeline);
+            }
+        }
+
+        // Helper to update mini map highlighting
+        function updateMiniMap(selectedMsaName) {
+             if (allMsaLayer) {
+                 allMsaLayer.setStyle(function(feature) {
+                     const msaName = feature.properties.NAME;
+                     const isLoaded = timelineData.some(msa => msa.name === msaName);
+                     const isSelected = msaName === selectedMsaName;
+                     
+                     return {
+                         fillColor: isSelected ? '#00ff00' : (isLoaded ? '#ff4500' : '#ffff00'), // Green for selected
+                         weight: isSelected ? 3 : (isLoaded ? 2 : 1),
+                         opacity: 1,
+                         color: isSelected ? '#000000' : (isLoaded ? '#ff0000' : '#000000'),
+                         dashArray: isLoaded ? '1' : '3',
+                         fillOpacity: isSelected ? 0.9 : (isLoaded ? 0.7 : 0.3)
+                     };
+                 });
+             }
+        }
+
+        // Event listener for the Save Database button
+        document.getElementById('save-msa-btn').addEventListener('click', saveToDatabase);
+
+        // Event listener for the Add Timeline Entry button
+        addTimelineEntryButton.addEventListener('click', handleAddTimelineEntry);
+
+        // Event listeners for the new MSA management buttons
+        addMsaButton.addEventListener('click', handleAddMsa);
+        removeMsaButton.addEventListener('click', handleRemoveMsa);
+        renameMsaButton.addEventListener('click', handleRenameMsa);
+         addMissingMsaButton.addEventListener('click', handleAddMissingMsa); // Listener for adding missing MSA
+        cloneTimelineButton.addEventListener('click', handleCloneTimeline); // Listener for cloning timeline
+
+
+        // Event listener for the MSA search input
+        msaSearchInput.addEventListener('input', handleMsaSearchInput);
+
+        // Event listener for the Apply Bulk Shift button
+        applyBulkShiftButton.addEventListener('click', handleApplyBulkShift);
+
+
+        // Load data on start
+        loadMsaGeoJSON();
+        loadTimelineDataFromServer();
+
+    </script>
+
+</body>
+</html>
+

@@ -85,6 +85,13 @@ class Lotslarp:
             if response:
                 await message.channel.send(response)
 
+        elif subcommand == "map":
+            map_url = os.environ.get("LOTSLARP_MAP_URL")
+            if map_url:
+                await message.channel.send(f"🗺️ **LotsLarp Sect Map:** {map_url}")
+            else:
+                await message.channel.send("❌ Map URL is not configured. Please contact the Storytellers.")
+
         elif subcommand == "archive":
             await self.archive_handler.run(client, message)
 

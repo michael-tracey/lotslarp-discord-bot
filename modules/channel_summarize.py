@@ -105,6 +105,8 @@ class ChannelSummarize:
         Summarizes messages from a specified channel.
         Usage: /summarize <channel_id>
         """
+        logger.info(f"Command started: /summarize by {message.author} in {message.channel}")
+
         # Check Permissions
         has_permission = False
         if isinstance(message.author, discord.Member):
@@ -114,6 +116,7 @@ class ChannelSummarize:
                     break
         
         if not has_permission:
+            logger.warning(f"Permission denied for {message.author}")
             await message.channel.send("🚫 You do not have permission to run this command.")
             return
 
@@ -130,20 +133,26 @@ class ChannelSummarize:
         
         # Check if summary output channel is configured
         if not self.summary_channel_id:
+            logger.error("Summary output channel not configured (LOTSLARP_BOT_SUMMARY_CHANNEL_ID).")
             return "Summary output channel is not configured. Please set LOTSLARP_BOT_SUMMARY_CHANNEL_ID."
         
         # Get the target channel (works across all guilds the bot has access to)
         target_channel = client.get_channel(target_channel_id)
         if not target_channel:
+            logger.warning(f"Could not find target channel with ID {target_channel_id}")
             return f"Could not find channel with ID {target_channel_id}. Make sure the bot has access to it."
         
         # Get the summary output channel
         summary_channel = client.get_channel(self.summary_channel_id)
         if not summary_channel:
+            logger.warning(f"Could not find summary output channel with ID {self.summary_channel_id}")
             return f"Could not find summary output channel with ID {self.summary_channel_id}."
         
+        logger.info(f"Summarizing channel {target_channel.name} ({target_channel.id}) to {summary_channel.name}")
+
         # Check permissions
         if not target_channel.permissions_for(target_channel.guild.me).read_message_history:
+            logger.warning(f"Bot missing read_message_history permission for {target_channel.name}")
             return f"Bot does not have permission to read message history in {target_channel.mention}."
         
         # Acknowledge the command (but don't post in the original channel)
@@ -174,6 +183,7 @@ class ChannelSummarize:
             messages_to_summarize.reverse()
             
             if not messages_to_summarize:
+                logger.info("No messages found to summarize.")
                 await message.add_reaction("❌")
                 await summary_channel.send(
                     f"**Channel Summary Request**\n"
@@ -200,6 +210,7 @@ class ChannelSummarize:
             # Generate AI summary
             summary_text = ""
             if self.gemini_model:
+                logger.info(f"Generating AI summary for {len(messages_to_summarize)} messages...")
                 def _generate_summary_sync(prompt_to_send):
                     try:
                         # Use the synchronous method for running in a separate thread
@@ -241,6 +252,7 @@ class ChannelSummarize:
                     logger.error(f"An error occurred while trying to run summary generation in a thread: {e}", exc_info=True)
                     summary_text = "Error: Summary generation process failed."
             else:
+                logger.warning("Gemini model not configured. Skipping AI summary.")
                 summary_text = "Gemini API not configured. Cannot generate summary."
             
             # Prepare the summary message
@@ -306,6 +318,7 @@ class ChannelSummarize:
             
         except discord.Forbidden:
             await message.add_reaction("❌")
+            logger.warning(f"Forbidden access during summary generation for channel {target_channel_id}")
             return f"Bot does not have permission to access channel {target_channel_id}."
         except Exception as e:
             logger.error(f"Error summarizing channel: {e}", exc_info=True)

@@ -183,6 +183,7 @@ class Voice:
         Generates a voice activity report.
         Usage: /voice-report <days>
         """
+        logger.info(f"Command started: /voice-report by {message.author} in {message.channel}")
         # Check Permissions
         has_permission = False
         if isinstance(message.author, discord.Member):
@@ -253,7 +254,7 @@ class Voice:
             docs_status = await asyncio.to_thread(lambda: list(query_status.stream()))
 
             if not docs_logs and not docs_active and not docs_status:
-                return f"**Voice Activity Report (Last {days} Days)**\nNo voice activity recorded.", None
+                return f"**Voice Activity Report (Last {days} Days)**\nNo voice activity recorded.", None, None
 
             # Normalize Data
             all_sessions = []

@@ -14,10 +14,21 @@
         update_cache: yes
         cache_valid_time: 3600
 
+    - name: Check for upgradable packages
+      shell: apt list --upgradable 2>/dev/null | grep -v "Listing..." | wc -l
+      register: upgrade_count
+      changed_when: false
+
+    - name: Display number of packages to upgrade
+      debug:
+        msg: "Upgrading {{ upgrade_count.stdout | trim }} packages. This may take several minutes..."
+
     - name: Upgrade all packages
       apt:
         upgrade: dist
         force_apt_get: yes
+      async: 1800 # Allow up to 30 minutes
+      poll: 15    # Check status every 15 seconds to show progress
 
     - name: Install dependencies
       apt:
@@ -29,6 +40,8 @@
           - python3-pip
           - python3-docker
         state: present
+      async: 600 # Allow up to 10 minutes
+      poll: 10   # Check status every 10 seconds
 
     # Docker installation simplified to use Ubuntu's native package
     # This avoids 404 errors with external Docker repositories
@@ -37,6 +50,8 @@
         name: docker.io
         state: present
         update_cache: yes
+      async: 600 # Allow up to 10 minutes
+      poll: 10   # Check status every 10 seconds
 
     - name: Ensure Docker service is running
       service:
@@ -61,6 +76,13 @@
         path: "{{ app_dir }}/.env"
         regexp: '^DCE_CLI_PATH='
         state: absent
+
+    - name: Set LOTSLARP_MAP_URL in .env
+      lineinfile:
+        path: "{{ app_dir }}/.env"
+        regexp: '^LOTSLARP_MAP_URL='
+        line: "LOTSLARP_MAP_URL={{ map_url }}"
+        state: present
 
     - name: Get Access Token from GCE Metadata
       # We use the VM's service account to authenticate with Artifact Registry
@@ -96,8 +118,14 @@
         # We mount .env instead of using env_file so python-dotenv can parse multi-line strings correctly
         volumes:
           - "{{ app_dir }}/.env:/app/.env"
+        ports:
+          - "8080:8080"
         # Limits (optional, mirroring e2-micro constraints roughly)
         memory: 800m
         log_driver: "gcplogs"
         log_options:
           gcp-log-cmd: "true"
+
+    - name: Prune unused Docker images and containers
+      shell: "docker system prune -af"
+      when: docker_image is defined

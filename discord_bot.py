@@ -1,6 +1,8 @@
 import os
+import json
 import logging
 import sqlite3
+import functools
 import pathlib
 import discord
 import asyncio
@@ -16,7 +18,7 @@ from apscheduler.triggers.cron import CronTrigger
 import google.generativeai as genai
 from google.cloud import firestore  # Add Firestore import
 from modules import pdf_generator
-from modules.utils import smart_chunk_message
+from modules.utils import smart_chunk_message, compress_pdf
 from modules.channel_summarize import handle_share_interaction
 from modules.summary_reminder import handle_remind_interaction
 from modules.lore import LoreManager
@@ -67,15 +69,9 @@ def log_memory_usage():
 # Load environment variables from .env file
 load_dotenv()
 
-# --- HTTP Health Check Server Imports ---
-from http.server import BaseHTTPRequestHandler
-from socketserver import ThreadingMixIn
-from http.server import HTTPServer
+# --- HTTP Health Check & Web Server Imports ---
+from flask import Flask, send_from_directory, jsonify, request, Response, make_response
 import threading
-
-class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
-    """Handle requests in a separate thread."""
-# --- End HTTP Health Check Server Imports ---
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(name)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -89,43 +85,142 @@ logging.getLogger('apscheduler').setLevel(logging.INFO)  # Reduce scheduler nois
 logging.getLogger('apscheduler.executors.default').setLevel(logging.ERROR)  # Only errors from executors
 logging.getLogger('apscheduler.scheduler').setLevel(logging.INFO)  # Allow scheduler info messages
 
+# Initialize Flask App
+app = Flask(__name__, static_folder='lotslarp-sect-map')
 
-# --- Health Check HTTP Server ---
-class HealthCheckHandler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        if self.path == '/health' or self.path == '/': # Respond to / or /health
-            self.send_response(200)
-            self.send_header('Content-type', 'text/plain')
-            self.end_headers()
-            self.wfile.write(b"BotContainerHealthy") # Simple health response
-            logger.info("Health check GET request successful.")
-        else:
-            self.send_response(404)
-            self.send_header('Content-type', 'text/plain')
-            self.end_headers()
-            self.wfile.write(b"NotFound")
-            logger.warning(f"Health check GET request to unknown path: {self.path}")
+def check_auth(username, password):
+    """Checks whether a username/password combination is valid."""
+    admin_password = os.environ.get("LOTSLARP_ADMIN_PASSWORD")
+    if not admin_password:
+        logger.warning("LOTSLARP_ADMIN_PASSWORD not set. Admin access disabled.")
+        return False
+    return username == 'admin' and password == admin_password
 
-    def log_message(self, format, *args):
-        # Quieten the HTTP server's logging or integrate with your main logger
-        logger.debug("Health check server: %s" % (format % args))
+def authenticate():
+    """Sends a 401 response that enables basic auth"""
+    return make_response(
+        'Could not verify your access level for that URL.\n'
+        'You have to login with proper credentials', 401,
+        {'WWW-Authenticate': 'Basic realm="Login Required"'}
+    )
 
+def requires_auth(f):
+    @functools.wraps(f)
+    def decorated(*args, **kwargs):
+        auth = request.authorization
+        if not auth or not check_auth(auth.username, auth.password):
+            return authenticate()
+        return f(*args, **kwargs)
+    return decorated
 
-def run_health_server(bot_client_for_check: discord.Client = None): # Optional: pass bot client
-    port = int(os.environ.get("PORT", 8080))
-    server_address = ('0.0.0.0', port) # Listen on all interfaces
-    
-    httpd = ThreadingHTTPServer(server_address, HealthCheckHandler)
-    logger.info(f"Health check HTTP server starting on port {port}...")
+@app.route('/health')
+def health_check():
+    logger.debug("Health check GET request successful.")
+    return "BotContainerHealthy", 200
+
+@app.route('/admin')
+@requires_auth
+def admin_panel():
     try:
-        httpd.serve_forever()
-    except KeyboardInterrupt:
-        logger.info("Health check server received KeyboardInterrupt.")
+        return send_from_directory('lotslarp-sect-map', 'timeline_editor.html')
     except Exception as e:
-        logger.error(f"Health check server crashed: {e}", exc_info=True)
-    finally:
-        httpd.server_close()
-        logger.info("Health check server stopped.")
+        logger.error(f"Error serving admin panel: {e}")
+        return "Error serving admin panel", 500
+
+@app.route('/vampire-timeline-data.json')
+def serve_timeline_data():
+    db = app.config.get('firestore_client')
+    if not db:
+        logger.error("Firestore client is not available. Cannot serve timeline data.")
+        return jsonify({"error": "Database unavailable"}), 500
+    
+    doc_ref = db.collection('sect_map_data').document('timeline')
+    
+    try:
+        doc = doc_ref.get()
+        if doc.exists:
+            data = doc.to_dict()
+            return jsonify(data.get('locations', []))
+        else:
+            logger.info("Timeline document not found in Firestore. Initializing from local JSON...")
+            # Initialize from local file
+            json_path = os.path.join('lotslarp-sect-map', 'vampire-timeline-data.json')
+            try:
+                with open(json_path, 'r') as f:
+                    local_data = json.load(f)
+                
+                # Upload to Firestore
+                doc_ref.set({
+                    'locations': local_data,
+                    'last_updated': firestore.SERVER_TIMESTAMP
+                })
+                logger.info("Successfully initialized Firestore with local data.")
+                return jsonify(local_data)
+            except Exception as e:
+                logger.error(f"Failed to initialize Firestore from local JSON: {e}")
+                return jsonify({"error": "Failed to initialize data"}), 500
+
+    except Exception as e:
+        logger.error(f"Error serving timeline data from Firestore: {e}")
+        return jsonify({"error": "Internal Server Error"}), 500
+
+@app.route('/api/save-timeline-data', methods=['POST'])
+@requires_auth
+def save_timeline_data():
+    db = app.config.get('firestore_client')
+    if not db:
+        logger.error("Firestore client is not available. Cannot save timeline data.")
+        return jsonify({"error": "Database unavailable"}), 500
+    
+    try:
+        data = request.get_json()
+        if not isinstance(data, list):
+            return jsonify({"error": "Invalid data format. Expected a list of locations."}), 400
+            
+        doc_ref = db.collection('sect_map_data').document('timeline')
+        doc_ref.set({
+            'locations': data,
+            'last_updated': firestore.SERVER_TIMESTAMP
+        })
+        
+        logger.info(f"Successfully saved {len(data)} locations to Firestore.")
+        return jsonify({"message": "Data saved successfully", "count": len(data)}), 200
+        
+    except Exception as e:
+        logger.error(f"Error saving timeline data to Firestore: {e}", exc_info=True)
+        return jsonify({"error": "Internal Server Error"}), 500
+
+@app.route('/')
+def index():
+    try:
+        return send_from_directory('lotslarp-sect-map', 'southeast-sect-map.html')
+    except Exception as e:
+        logger.error(f"Error serving index: {e}")
+        return "Error serving map", 500
+
+@app.route('/<path:filename>')
+def serve_static(filename):
+    try:
+        return send_from_directory('lotslarp-sect-map', filename)
+    except Exception as e:
+        logger.error(f"Error serving {filename}: {e}")
+        return "File not found", 404
+
+def run_health_server(bot_client_for_check: discord.Client = None):
+    port = int(os.environ.get("PORT", 8080))
+    logger.info(f"Web server starting on port {port}...")
+    
+    # Disable flask banner/startup messages to keep logs clean(er)
+    import logging
+    log = logging.getLogger('werkzeug')
+    log.setLevel(logging.ERROR)
+    
+    try:
+        # Run Flask in a thread. use_reloader=False is crucial when running in a thread.
+        app.run(host='0.0.0.0', port=port, use_reloader=False)
+    except Exception as e:
+        logger.error(f"Web server crashed: {e}", exc_info=True)
+# --- End HTTP Health Check & Web Server Imports ---
 
 
 async def process_command(client: discord.Client, message: discord.Message, command_map: dict):
@@ -176,6 +271,7 @@ async def process_command(client: discord.Client, message: discord.Message, comm
                         await asyncio.sleep(0.1) # Add a small delay to avoid rate limits
                 else:
                     await message.channel.send(stripped_result, suppress_embeds=True)
+                    logger.info(f"Sent result for command '{command_name}' to channel {message.channel.name}. Length: {len(stripped_result)}")
             
             else: 
                 logger.warning(f"Command '{command_name}' returned an unexpected type: {type(result)}. Converting to string.")
@@ -194,6 +290,7 @@ async def process_command(client: discord.Client, message: discord.Message, comm
                             await asyncio.sleep(0.1) # Add a small delay to avoid rate limits
                     else:
                         await message.channel.send(str_result, suppress_embeds=True)
+                        logger.info(f"Sent converted-to-string result for command '{command_name}' (original type: {type(result)}) to channel {message.channel.name}. Length: {len(str_result)}")
                 except Exception as send_exc:
                     logger.error(f"Failed to send result of type {type(result)} for command '{command_name}': {send_exc}", exc_info=True)
                     await message.reply("**An error occurred trying to display the command's result.**", mention_author=False)
@@ -523,7 +620,7 @@ async def send_digest_pdf(client: discord.Client, summary_module, gemini_model, 
     if not should_send:
         return
 
-    logger.info("Generating and sending digest...")
+    logger.info(f"Generating and sending digest for {len(messages_data)} messages...")
 
     messages_for_pdf = []
     plain_text_for_summary = []
@@ -644,6 +741,27 @@ async def send_digest_pdf(client: discord.Client, summary_module, gemini_model, 
         logger.error("Could not generate PDF, aborting digest send.")
         return
 
+    # Compress by default
+    try:
+        DISCORD_LIMIT_BYTES = 10 * 1024 * 1024
+        logger.info(f"Optimizing PDF size for {pdf_path}...")
+        
+        compressed_path = pdf_path.replace(".pdf", "_compressed.pdf")
+        if await compress_pdf(pdf_path, compressed_path, power=2):
+            pdf_path = compressed_path
+            # If still too large, try ebook
+            if os.path.getsize(pdf_path) > DISCORD_LIMIT_BYTES:
+                ebook_path = pdf_path.replace(".pdf", "_ebook.pdf")
+                if await compress_pdf(pdf_path, ebook_path, power=3):
+                    pdf_path = ebook_path
+                    # If still too large, try max
+                    if os.path.getsize(pdf_path) > DISCORD_LIMIT_BYTES:
+                        max_path = pdf_path.replace(".pdf", "_max.pdf")
+                        if await compress_pdf(pdf_path, max_path, power=4):
+                            pdf_path = max_path
+    except Exception as e:
+        logger.error(f"Error compressing PDF in send_digest_pdf: {e}")
+
     # Send PDF to channel
     channel_id = client.digest_channel_id
     if not channel_id:
@@ -680,6 +798,15 @@ async def send_digest_pdf(client: discord.Client, summary_module, gemini_model, 
         for stat in message_stats:
             discord_message += f"• {stat}\n"
         
+        # Check size for warning
+        try:
+            DISCORD_LIMIT_BYTES = 10 * 1024 * 1024
+            file_size = os.path.getsize(pdf_path)
+            if file_size > DISCORD_LIMIT_BYTES:
+                discord_message += f"\n⚠️ **Note:** The PDF report is very large ({file_size/1024/1024:.2f} MB) and may fail to upload."
+        except:
+            pass
+
         # Use smart chunking
         chunks = smart_chunk_message(discord_message, 1950)
 
@@ -730,7 +857,7 @@ def setup_bot():
     intents.guilds = True
 
     command_classes = {}
-    module_names_to_load = ["throw", "huh", "summary", "pdf_generator", "lotslarp"]
+    module_names_to_load = ["throw", "huh", "summary", "pdf_generator", "lotslarp", "voice"]
     logger.info(f"Attempting to load command modules: {module_names_to_load}")
     for module_name_str in module_names_to_load:
         full_module_path = f"modules.{module_name_str}"
@@ -796,6 +923,9 @@ def setup_bot():
         logger.critical(f"Failed to initialize Firestore client: {e}", exc_info=True)
         firestore_client = None
 
+    # Store Firestore client in Flask app config for web routes
+    app.config['firestore_client'] = firestore_client
+
     # Initialize LoreManager
     lore_manager = None
     if firestore_client:
@@ -818,6 +948,12 @@ def setup_bot():
             elif name == "summary":
                 if firestore_client:
                     summary_module_instance = Cls(db_client=firestore_client)
+                else:
+                    logger.error("Firestore client not available, cannot instantiate Summary module.")
+                    continue
+            elif name == "voice":
+                if firestore_client:
+                    voice_module_instance = Cls(firestore_client=firestore_client)
                 else:
                     logger.error("Firestore client not available, cannot instantiate Voice module.")
                     continue

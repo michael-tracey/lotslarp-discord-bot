@@ -5,6 +5,7 @@ import sqlite3
 import functools
 import pathlib
 import discord
+from discord import app_commands
 import asyncio
 import importlib
 import tracemalloc
@@ -24,6 +25,7 @@ from modules.summary_reminder import handle_remind_interaction
 from modules.lore import LoreManager
 from modules.monthly_summary import check_monthly_trigger
 from modules.archive_cleanup import cleanup_old_archives
+from modules.slash_commands import register_slash_commands
 
 # --- Health Monitoring ---
 def periodic_health_check():
@@ -310,12 +312,13 @@ def get_app_db_path():
     db_name = os.environ.get("LOTSLARP_DISCORD_BOT_APP_DB", "huh.db")
     db_path = os.path.abspath(db_name)
     logger.info(f"Constructed absolute path for content DB: '{db_path}'")
-    return os.path.abspath(db_path)
+    return db_path
 
 
 class MyClient(discord.Client):
     def __init__(self, command_map, summary_module, scheduler, status_command, voice_module=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.tree = app_commands.CommandTree(self)
         self.command_map = command_map
         self.summary_module = summary_module
         self.voice_module = voice_module
@@ -323,11 +326,17 @@ class MyClient(discord.Client):
         self.status_command = status_command
         self.summary_role_name = os.environ.get("LOTSLARP_DISCORD_BOT_SUMMARY_ROLE_NAME")
         try:
-            channel_id_str = os.environ.get("LOTSLARP_DISCORD_BOT_DIGEST_CHANNEL_ID", "0")
+            # Check LOTSLARP_BOT_SUMMARY_CHANNEL_ID first, then REPORT, then DIGEST
+            channel_id_str = os.environ.get("LOTSLARP_BOT_SUMMARY_CHANNEL_ID")
+            if not channel_id_str:
+                channel_id_str = os.environ.get("LOTSLARP_BOT_REPORT_CHANNEL_ID")
+            if not channel_id_str:
+                channel_id_str = os.environ.get("LOTSLARP_DISCORD_BOT_DIGEST_CHANNEL_ID", "0")
+            
             # Strip quotes and whitespace, then convert to int
             self.digest_channel_id = int(channel_id_str.strip().strip('"').strip("'"))
         except (ValueError, TypeError) as e:
-            logger.error(f"Invalid DIGEST_CHANNEL_ID value: '{os.environ.get('LOTSLARP_DISCORD_BOT_DIGEST_CHANNEL_ID')}'. Using 0 as default. Error: {e}")
+            logger.error(f"Invalid DIGEST_CHANNEL_ID, SUMMARY_CHANNEL_ID, or REPORT_CHANNEL_ID: {e}")
             self.digest_channel_id = 0
             
         # New User Setup Configuration
@@ -353,6 +362,11 @@ class MyClient(discord.Client):
         self.new_user_additional_roles = [r.strip() for r in additional_roles_str.split(",") if r.strip()]
 
         logger.info("MyClient initialized.")
+
+    async def setup_hook(self) -> None:
+        """Called by discord.py before connecting — syncs slash commands globally."""
+        await self.tree.sync()
+        logger.info("Slash commands synced with Discord.")
 
     async def on_voice_state_update(self, member, before, after):
         logger.debug(f"Event: on_voice_state_update for {member.display_name}")
@@ -704,9 +718,15 @@ async def send_digest_pdf(client: discord.Client, summary_module, gemini_model, 
             prompt_instructions = os.environ.get("LOTSLARP_DISCORD_BOT_GEMINI_PROMPT", default_prompt)
             prompt = f"{prompt_instructions}\n{lore_context}\n" + all_text
             
-            # Run the synchronous generation in a separate thread
-            executive_summary = await asyncio.to_thread(_generate_summary_sync, prompt)
+            # Run the synchronous generation in a separate thread with a timeout
+            executive_summary = await asyncio.wait_for(
+                asyncio.to_thread(_generate_summary_sync, prompt),
+                timeout=120
+            )
 
+        except asyncio.TimeoutError:
+            logger.error("Gemini summary generation timed out after 120 seconds.")
+            executive_summary = "Error: Summary generation timed out."
         except Exception as e:
             # This catches errors from the to_thread call itself, though the inner function handles its own.
             logger.error(f"An error occurred while trying to run summary generation in a thread: {e}", exc_info=True)
@@ -727,11 +747,15 @@ async def send_digest_pdf(client: discord.Client, summary_module, gemini_model, 
 
     # Generate PDF in a separate thread to avoid blocking the event loop
     pdf_path = f"/tmp/digest_{current_date.strftime('%Y-%m-%d')}.pdf"
+
+    # Track all temporary files for cleanup
+    temp_files = [pdf_path]
+
     pdf_success = await asyncio.to_thread(
         pdf_generator.create_digest_pdf,
-        pdf_path, 
-        executive_summary, 
-        messages_for_pdf, 
+        pdf_path,
+        executive_summary,
+        messages_for_pdf,
         title=pdf_title,
         date_range=date_range,
         message_stats=message_stats
@@ -745,19 +769,22 @@ async def send_digest_pdf(client: discord.Client, summary_module, gemini_model, 
     try:
         DISCORD_LIMIT_BYTES = 10 * 1024 * 1024
         logger.info(f"Optimizing PDF size for {pdf_path}...")
-        
+
         compressed_path = pdf_path.replace(".pdf", "_compressed.pdf")
         if await compress_pdf(pdf_path, compressed_path, power=2):
+            temp_files.append(compressed_path)
             pdf_path = compressed_path
             # If still too large, try ebook
             if os.path.getsize(pdf_path) > DISCORD_LIMIT_BYTES:
                 ebook_path = pdf_path.replace(".pdf", "_ebook.pdf")
                 if await compress_pdf(pdf_path, ebook_path, power=3):
+                    temp_files.append(ebook_path)
                     pdf_path = ebook_path
                     # If still too large, try max
                     if os.path.getsize(pdf_path) > DISCORD_LIMIT_BYTES:
                         max_path = pdf_path.replace(".pdf", "_max.pdf")
                         if await compress_pdf(pdf_path, max_path, power=4):
+                            temp_files.append(max_path)
                             pdf_path = max_path
     except Exception as e:
         logger.error(f"Error compressing PDF in send_digest_pdf: {e}")
@@ -765,12 +792,20 @@ async def send_digest_pdf(client: discord.Client, summary_module, gemini_model, 
     # Send PDF to channel
     channel_id = client.digest_channel_id
     if not channel_id:
-        logger.error("LOTSLARP_DISCORD_BOT_DIGEST_CHANNEL_ID not set. Cannot send PDF.")
+        logger.error("No digest channel ID configured (Check SUMMARY_CHANNEL, REPORT_CHANNEL, or DIGEST_CHANNEL).")
+        # Ensure cleanup even on early return
+        for tmp_file in temp_files:
+            if os.path.exists(tmp_file):
+                os.remove(tmp_file)
         return
 
     channel = client.get_channel(channel_id)
     if not channel:
-        logger.error(f"Cannot find channel with ID {channel_id}.")
+        logger.error(f"Cannot find digest channel with ID {channel_id}.")
+        # Ensure cleanup even on early return
+        for tmp_file in temp_files:
+            if os.path.exists(tmp_file):
+                os.remove(tmp_file)
         return
 
     try:
@@ -783,12 +818,12 @@ async def send_digest_pdf(client: discord.Client, summary_module, gemini_model, 
             channel_name = row[7] or "Unknown Channel"
             ts_idx = row[8]
             ts_idx_str = ts_idx.strftime('%m/%d %H:%M') if ts_idx else "??:??"
-            
+
             message_index += f"• `{ts_idx_str}` [#{channel_name}]({url_idx}) - {author_display}\n"
 
         # Prepare Discord message with summary, index, and statistics
         discord_message = f"**{pdf_title} - {date_range}**\n\n"
-        
+
         discord_message += "**Storyteller Summary:**\n"
         discord_message += executive_summary + "\n"
 
@@ -797,10 +832,9 @@ async def send_digest_pdf(client: discord.Client, summary_module, gemini_model, 
         discord_message += "**Message Statistics:**\n"
         for stat in message_stats:
             discord_message += f"• {stat}\n"
-        
+
         # Check size for warning
         try:
-            DISCORD_LIMIT_BYTES = 10 * 1024 * 1024
             file_size = os.path.getsize(pdf_path)
             if file_size > DISCORD_LIMIT_BYTES:
                 discord_message += f"\n⚠️ **Note:** The PDF report is very large ({file_size/1024/1024:.2f} MB) and may fail to upload."
@@ -812,7 +846,7 @@ async def send_digest_pdf(client: discord.Client, summary_module, gemini_model, 
 
         with open(pdf_path, "rb") as f:
             pdf_file = discord.File(f, filename=os.path.basename(pdf_path))
-            
+
             # Send chunks
             for i, chunk in enumerate(chunks):
                 if i == len(chunks) - 1:
@@ -831,10 +865,14 @@ async def send_digest_pdf(client: discord.Client, summary_module, gemini_model, 
     except Exception as e:
         logger.error(f"Failed to send PDF digest: {e}", exc_info=True)
     finally:
-        # Clean up the generated PDF file
-        if os.path.exists(pdf_path):
-            os.remove(pdf_path)
-            logger.info(f"Removed temporary PDF file: {pdf_path}")
+        # Clean up all generated PDF files
+        for tmp_file in temp_files:
+            if os.path.exists(tmp_file):
+                try:
+                    os.remove(tmp_file)
+                    logger.info(f"Removed temporary PDF file: {tmp_file}")
+                except Exception as e:
+                    logger.error(f"Failed to remove temporary file {tmp_file}: {e}")
 
 
 async def run_stale_channels_job(client: discord.Client, summary_reminder_instance):
@@ -845,6 +883,28 @@ async def run_stale_channels_job(client: discord.Client, summary_reminder_instan
         await summary_reminder_instance.execute_auto_scan(client, output_channel)
     else:
         logger.error(f"Cannot run stale channels job: Output channel {summary_reminder_instance.output_channel_id} not found.")
+
+
+def _make_safe_job(func, name, client):
+    """Wraps a scheduled job so any uncaught exception posts an alert to the report channel."""
+    async def _wrapped(*args, **kwargs):
+        try:
+            return await func(*args, **kwargs)
+        except Exception as e:
+            logger.error(f"Scheduled job '{name}' failed: {e}", exc_info=True)
+            try:
+                report_channel_id = int(os.environ.get("LOTSLARP_BOT_REPORT_CHANNEL_ID", "0") or "0")
+                if report_channel_id:
+                    ch = client.get_channel(report_channel_id)
+                    if ch:
+                        await ch.send(
+                            f"⚠️ **Scheduled job failed: `{name}`**\n"
+                            f"```{type(e).__name__}: {str(e)[:400]}```\n"
+                            f"Check server logs for the full traceback."
+                        )
+            except Exception as alert_err:
+                logger.error(f"Could not post job failure alert: {alert_err}")
+    return _wrapped
 
 
 def setup_bot():
@@ -997,47 +1057,65 @@ def setup_bot():
     # Create the client and scheduler
     scheduler = AsyncIOScheduler()
     client = MyClient(
-        command_map=command_map_instances, 
+        command_map=command_map_instances,
         summary_module=summary_module_instance,
-        voice_module=voice_module_instance, 
+        voice_module=voice_module_instance,
         scheduler=scheduler,
         status_command=status_command_instance,
         intents=intents
     )
-    
+
+    def safe_job(func, name):
+        return _make_safe_job(func, name, client)
+
+    # Register slash commands
+    lotslarp_instance = command_map_instances.get('lotslarp')
+    huh_instance = command_map_instances.get('huh')
+    if lotslarp_instance:
+        register_slash_commands(
+            client.tree,
+            client,
+            lotslarp_instance=lotslarp_instance,
+            huh_instance=huh_instance,
+            lore_manager=lore_manager,
+            firestore_client=firestore_client,
+        )
+    else:
+        logger.warning("Lotslarp module not loaded — slash commands not registered.")
+
     # Schedule jobs
     if summary_module_instance:
         # Cron schedule for checking digest thresholds (default hourly)
         cron_schedule = os.environ.get("LOTSLARP_DISCORD_BOT_DIGEST_CRON", "0 * * * *") 
         try:
             trigger = CronTrigger.from_crontab(cron_schedule, timezone="UTC")
-            scheduler.add_job(send_digest_pdf, trigger=trigger, args=[client, summary_module_instance, gemini_model, lore_manager])
+            scheduler.add_job(safe_job(send_digest_pdf, "digest"), trigger=trigger, args=[client, summary_module_instance, gemini_model, lore_manager])
             logger.info(f"Scheduled digest check with cron schedule: '{cron_schedule}' UTC")
         except ValueError as e:
             logger.error(f"Invalid cron string '{cron_schedule}'. Defaulting to every hour. Error: {e}")
-            scheduler.add_job(send_digest_pdf, 'interval', minutes=60, args=[client, summary_module_instance, gemini_model, lore_manager])
+            scheduler.add_job(safe_job(send_digest_pdf, "digest"), 'interval', minutes=60, args=[client, summary_module_instance, gemini_model, lore_manager])
 
-        scheduler.add_job(summary_module_instance.delete_old_messages, 'cron', hour=0)
+        scheduler.add_job(safe_job(summary_module_instance.delete_old_messages, "delete_old_messages"), 'cron', hour=0, minute=0)
 
         # Schedule Monthly Summary Check (Daily at 14:00 UTC)
-        scheduler.add_job(check_monthly_trigger, 'cron', hour=14, args=[client, summary_module_instance, gemini_model, pdf_generator, lore_manager])
+        scheduler.add_job(safe_job(check_monthly_trigger, "monthly_summary"), 'cron', hour=14, args=[client, summary_module_instance, gemini_model, pdf_generator, lore_manager])
         logger.info("Scheduled monthly summary trigger check for daily at 14:00 UTC.")
-    
+
     if voice_module_instance:
-        scheduler.add_job(voice_module_instance.cleanup_old_logs, 'cron', hour=0)
-        logger.info("Scheduled voice log cleanup for daily at 00:00.")
-    
-    # Schedule Archive Cleanup (Daily)
-    scheduler.add_job(cleanup_old_archives, 'cron', hour=0, args=[client, firestore_client])
+        scheduler.add_job(safe_job(voice_module_instance.cleanup_old_logs, "cleanup_old_logs"), 'cron', hour=0, minute=5)
+        logger.info("Scheduled voice log cleanup for daily at 00:05.")
+
+    # Schedule Archive Cleanup (Daily) — staggered to 00:10 to avoid pile-up with other midnight jobs
+    scheduler.add_job(safe_job(cleanup_old_archives, "cleanup_old_archives"), 'cron', hour=0, minute=10, args=[client, firestore_client])
     logger.info("Scheduled stale archive channel cleanup for daily at 00:00.")
-        
+
     # Schedule Stale Channels Scan
     if summary_reminder_instance:
         stale_cron = os.environ.get("LOTSLARP_BOT_STALE_CHANNELS_CRON")
         if stale_cron:
             try:
                 trigger = CronTrigger.from_crontab(stale_cron, timezone="UTC")
-                scheduler.add_job(run_stale_channels_job, trigger=trigger, args=[client, summary_reminder_instance])
+                scheduler.add_job(safe_job(run_stale_channels_job, "stale_channels"), trigger=trigger, args=[client, summary_reminder_instance])
                 logger.info(f"Scheduled stale channels scan with cron schedule: '{stale_cron}' UTC")
             except ValueError as e:
                 logger.error(f"Invalid stale channels cron string '{stale_cron}'. Job not scheduled. Error: {e}")

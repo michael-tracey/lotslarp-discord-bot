@@ -25,11 +25,52 @@ resource "google_project_iam_member" "datastore_user" {
   member  = "serviceAccount:${google_service_account.bot_sa.email}"
 }
 
+# Allow accessing GCS
+resource "google_project_iam_member" "storage_admin" {
+  project = var.project_id
+  role    = "roles/storage.objectAdmin"
+  member  = "serviceAccount:${google_service_account.bot_sa.email}"
+}
+
 # Allow logging
 resource "google_project_iam_member" "logging_writer" {
   project = var.project_id
   role    = "roles/logging.logWriter"
   member  = "serviceAccount:${google_service_account.bot_sa.email}"
+}
+
+# --- Cloud Storage Bucket ---
+resource "google_storage_bucket" "archive_bucket" {
+  name          = "${var.project_id}-discord-archives"
+  location      = var.region
+  force_destroy = true
+
+  uniform_bucket_level_access = true
+
+  lifecycle_rule {
+    condition {
+      age = 30
+    }
+    action {
+      type = "Delete"
+    }
+  }
+}
+
+# --- Public Access for Archives ---
+# Custom role that allows reading objects but NOT listing the bucket contents.
+# This prevents people from "browsing" the bucket to see other chats.
+resource "google_project_iam_custom_role" "public_archive_reader" {
+  role_id     = "PublicArchiveReader"
+  title       = "Public Archive Reader"
+  description = "Allows public access to individual archives without bucket listing"
+  permissions = ["storage.objects.get"]
+}
+
+resource "google_storage_bucket_iam_member" "public_rule" {
+  bucket = google_storage_bucket.archive_bucket.name
+  role   = google_project_iam_custom_role.public_archive_reader.name
+  member = "allUsers"
 }
 
 # --- Compute Instance ---

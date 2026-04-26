@@ -68,19 +68,41 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-async def compress_pdf(input_path: str, output_path: str, power: int = 2) -> bool:
+def get_admin_roles() -> set:
+    """Returns the set of role names that have admin/storyteller access.
+    Reads LOTSLARP_BOT_ADMIN_USER as a comma-separated list of role names.
+    """
+    raw = os.environ.get("LOTSLARP_BOT_ADMIN_USER", "Storytellers")
+    return {r.strip().lstrip("@") for r in raw.split(",") if r.strip()}
+
+async def get_pdf_page_count(pdf_path: str) -> int:
+    """Gets the total page count of a PDF using Ghostscript."""
+    cmd = [
+        "gs", "-q", "-dNODISPLAY", 
+        "-c", f"({pdf_path}) (r) file runpdfbegin pdfpagecount = quit"
+    ]
+    try:
+        process = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        stdout, _ = await process.communicate()
+        if process.returncode == 0:
+            return int(stdout.decode().strip())
+    except Exception as e:
+        logger.error(f"Failed to get PDF page count: {e}")
+    return 0
+
+async def compress_pdf(input_path: str, output_path: str, power: int = 2, progress_callback=None) -> bool:
     """
     Compresses a PDF using Ghostscript.
     
     Args:
         input_path: Path to the source PDF.
         output_path: Path where the compressed PDF should be saved.
-        power: Compression power (0-4):
-               0: default (low compression, high quality)
-               1: prepress (high quality, 300 dpi)
-               2: printer (good quality, 300 dpi)
-               3: ebook (medium quality, 150 dpi)
-               4: screen (low quality, 72 dpi)
+        power: Compression power (0-4)
+        progress_callback: Optional async function taking (line)
     
     Returns:
         bool: True if compression was successful, False otherwise.
@@ -95,13 +117,19 @@ async def compress_pdf(input_path: str, output_path: str, power: int = 2) -> boo
     
     pdf_setting = settings.get(power, "/printer")
     
-    gs_command = [
+    import shutil
+    throttled_command = []
+    if shutil.which("nice"):
+        throttled_command.extend(["nice", "-n", "15"])
+    if shutil.which("ionice"):
+        throttled_command.extend(["ionice", "-c", "3"])
+
+    gs_command = throttled_command + [
         "gs",
         "-sDEVICE=pdfwrite",
         "-dCompatibilityLevel=1.4",
         f"-dPDFSETTINGS={pdf_setting}",
         "-dNOPAUSE",
-        "-dQUIET",
         "-dBATCH",
         f"-sOutputFile={output_path}",
         input_path
@@ -115,17 +143,42 @@ async def compress_pdf(input_path: str, output_path: str, power: int = 2) -> boo
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE
         )
-        stdout, stderr = await process.communicate()
         
+        async def read_stream(stream):
+            while True:
+                line = await stream.readline()
+                if not line:
+                    break
+                line_str = line.decode().strip()
+                if progress_callback:
+                    await progress_callback(line_str)
+
+        try:
+            await asyncio.wait_for(
+                asyncio.gather(
+                    read_stream(process.stdout),
+                    read_stream(process.stderr),
+                    process.wait()
+                ),
+                timeout=300
+            )
+        except asyncio.TimeoutError:
+            process.kill()
+            await process.wait()
+            logger.error("PDF compression timed out after 300 seconds.")
+            return False
+
         if process.returncode == 0:
             original_size = os.path.getsize(input_path)
             new_size = os.path.getsize(output_path)
             reduction = (original_size - new_size) / original_size * 100
-            logger.info(f"PDF compression successful. Size reduced from {original_size/1024/1024:.2f}MB to {new_size/1024/1024:.2f}MB ({reduction:.1f}% reduction).")
+            if reduction > 0:
+                logger.info(f"PDF compression successful. Size reduced from {original_size/1024/1024:.2f}MB to {new_size/1024/1024:.2f}MB ({reduction:.1f}% reduction).")
+            else:
+                logger.info(f"PDF compression completed. Original: {original_size/1024/1024:.2f}MB, New: {new_size/1024/1024:.2f}MB (No reduction).")
             return True
         else:
             logger.error(f"Ghostscript failed with exit code {process.returncode}")
-            logger.error(f"GS STDERR: {stderr.decode()}")
             return False
     except Exception as e:
         logger.error(f"Error during PDF compression: {e}", exc_info=True)
@@ -170,7 +223,10 @@ class JobQueue:
         try:
             last_pos = pos
             if update_callback:
-                await update_callback(last_pos)
+                try:
+                    await update_callback(last_pos)
+                except Exception as e:
+                    logger.error(f"JobQueue: Error in update_callback: {e}")
 
             while not my_future.done():
                 logger.info(f"JobQueue: Waiter (pos {last_pos}) waiting for turn or change event...")
@@ -182,7 +238,8 @@ class JobQueue:
                 )
                 
                 for t in pending:
-                    t.cancel()
+                    if t is not my_future:
+                        t.cancel()
 
                 if my_future.done():
                     logger.info("JobQueue: Waiter's turn has arrived!")
@@ -196,7 +253,10 @@ class JobQueue:
                         logger.info(f"JobQueue: Waiter position updated: {last_pos} -> {new_pos}")
                         last_pos = new_pos
                         if update_callback:
-                            await update_callback(last_pos)
+                            try:
+                                await update_callback(last_pos)
+                            except Exception as e:
+                                logger.error(f"JobQueue: Error in update_callback: {e}")
                 except ValueError:
                     # We might have been popped and set_result called, but loop hasn't hit my_future.done()
                     logger.info("JobQueue: Waiter no longer in waiters list, assuming turn is coming.")

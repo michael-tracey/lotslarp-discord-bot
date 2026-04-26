@@ -1,6 +1,7 @@
 import os
 import discord
 import logging
+from modules.utils import get_admin_roles
 
 logger = logging.getLogger(__name__)
 
@@ -11,7 +12,7 @@ class DigestNow:
         self.gemini_model = gemini_model
         self.lore_manager = lore_manager
         self.name = "digest-now"
-        self.admin_role_name = os.environ.get("LOTSLARP_BOT_ADMIN_USER", "@storytellers").strip("@")
+        self.admin_roles = get_admin_roles()
 
     async def run(self, client: discord.Client, message: discord.Message):
         """
@@ -24,7 +25,7 @@ class DigestNow:
         has_permission = False
         if isinstance(message.author, discord.Member):
             for role in message.author.roles:
-                if role.name == self.admin_role_name:
+                if role.name in self.admin_roles:
                     has_permission = True
                     break
         

@@ -33,30 +33,30 @@ class PDF(FPDF):
         self.title = title
         self.date_range = date_range
         # Light theme palette for better readability
-        self.background_color = (255, 255, 255)  # White background
-        self.text_color = (33, 37, 41)  # Dark text for readability
-        self.header_color = (114, 137, 218) # Discord's "Blurple"
-        self.link_color = (0, 123, 191)  # Darker blue for links
-        self.line_color = (108, 117, 125)  # Medium gray for lines
+        self.palette_bg = (255, 255, 255)  # White background
+        self.palette_text = (33, 37, 41)  # Dark text for readability
+        self.palette_header = (114, 137, 218) # Discord's "Blurple"
+        self.palette_link = (0, 123, 191)  # Darker blue for links
+        self.palette_line = (108, 117, 125)  # Medium gray for lines
 
     def add_page(self, orientation='', format='', same=False):
         super().add_page(orientation, format, same)
-        self.set_fill_color(self.background_color[0], self.background_color[1], self.background_color[2])
+        self.set_fill_color(*self.palette_bg)
         self.rect(0, 0, self.w, self.h, 'F')
-        self.set_text_color(self.text_color[0], self.text_color[1], self.text_color[2])
+        self.set_text_color(*self.palette_text)
 
     def header(self):
-        self.set_text_color(self.header_color[0], self.header_color[1], self.header_color[2])
+        self.set_text_color(*self.palette_header)
         self.set_font('Arial', 'B', 16)
         self.cell(0, 10, safe_encode_text(self.title), 0, 1, 'C')
         
         # Add date range if provided
         if self.date_range:
-            self.set_text_color(self.text_color[0], self.text_color[1], self.text_color[2])
+            self.set_text_color(*self.palette_text)
             self.set_font('Arial', 'B', 11)
             self.cell(0, 8, safe_encode_text(self.date_range), 0, 1, 'C')
         
-        self.set_text_color(self.text_color[0], self.text_color[1], self.text_color[2])
+        self.set_text_color(*self.palette_text)
         self.set_font('Arial', '', 9)
         self.cell(0, 8, f"Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')}", 0, 1, 'C')
         self.ln(5)
@@ -64,20 +64,20 @@ class PDF(FPDF):
     def footer(self):
         self.set_y(-15)
         self.set_font('Arial', 'I', 8)
-        self.set_text_color(self.text_color[0], self.text_color[1], self.text_color[2])
+        self.set_text_color(*self.palette_text)
         self.cell(0, 10, f'Page {self.page_no()}', 0, 0, 'C')
 
     def chapter_title(self, title):
         self.set_font('Arial', 'B', 14)
-        self.set_text_color(self.header_color[0], self.header_color[1], self.header_color[2])
+        self.set_text_color(*self.palette_header)
         self.cell(0, 6, safe_encode_text(title), 0, 1, 'L')
-        self.set_draw_color(self.line_color[0], self.line_color[1], self.line_color[2])
+        self.set_draw_color(*self.palette_line)
         self.line(self.get_x(), self.get_y(), self.get_x() + self.w - self.l_margin - self.r_margin, self.get_y())
         self.ln(7)
 
     def chapter_body(self, body):
         self.set_font('Arial', '', 11)
-        self.set_text_color(self.text_color[0], self.text_color[1], self.text_color[2])
+        self.set_text_color(*self.palette_text)
         safe_body = safe_encode_text(body)
         self.multi_cell(0, 6, safe_body)
         self.ln()
@@ -89,7 +89,7 @@ class PDF(FPDF):
         # Add message statistics if provided
         if message_stats:
             self.set_font('Arial', 'B', 10)
-            self.set_text_color(self.text_color[0], self.text_color[1], self.text_color[2])
+            self.set_text_color(*self.palette_text)
             self.cell(0, 6, 'Message Statistics:', 0, 1, 'L')
             self.set_font('Arial', '', 10)
             for stat_line in message_stats:
@@ -113,13 +113,13 @@ class PDF(FPDF):
 
             # --- Create clickable link section ---
             self.set_font('Arial', 'B', 10)
-            self.set_text_color(self.link_color[0], self.link_color[1], self.link_color[2])
+            self.set_text_color(*self.palette_link)
             link_text = f"Server: {guild_name} > #{channel_name} (by {author})"
             safe_link_text = safe_encode_text(link_text)
             self.cell(0, 5, safe_link_text, 0, 1, 'L', link=url)
             
             # --- Add message content ---
-            self.set_text_color(self.text_color[0], self.text_color[1], self.text_color[2])
+            self.set_text_color(*self.palette_text)
             self.set_font('Arial', '', 10)
             safe_content = safe_encode_text(content)
             self.multi_cell(0, 5, " " * 3 + safe_content) # Indent content
@@ -127,9 +127,10 @@ class PDF(FPDF):
 
             # Add a separator line between messages, but not after the last one
             if i < len(messages) - 1:
-                self.set_draw_color(self.line_color[0], self.line_color[1], self.line_color[2])
+                self.set_draw_color(*self.palette_line)
                 self.line(self.get_x(), self.get_y(), self.get_x() + self.w - self.l_margin - self.r_margin, self.get_y())
                 self.ln(4)
+
 
 def create_digest_pdf(file_path, executive_summary, messages, title="Discord Summary Digest", date_range="", message_stats=None):
     """

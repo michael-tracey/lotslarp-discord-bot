@@ -1,4 +1,5 @@
 import os
+import asyncio
 import discord
 import logging
 from datetime import datetime, timezone
@@ -11,7 +12,7 @@ async def cleanup_old_archives(client: discord.Client, firestore_client):
     """
     Queries Firestore for 'pending' archive channels.
     Checks deletion_date. If passed, deletes the channel and updates DB.
-    Generates a report to LOTSLARP_BOT_SUMMARY_CHANNEL_ID.
+    Generates a report to LOTSLARP_BOT_REPORT_CHANNEL_ID (or LOTSLARP_BOT_SUMMARY_CHANNEL_ID).
     """
     if not firestore_client:
         logger.error("Firestore client not available. Skipping archive cleanup.")
@@ -23,9 +24,10 @@ async def cleanup_old_archives(client: discord.Client, firestore_client):
     pending_deletion_info = []
     
     try:
-        # Query for all pending archives
-        docs = firestore_client.collection('archived_channels').where('status', '==', 'pending').stream()
-        
+        # Query for all pending archives — stream() is synchronous; run in thread to avoid blocking the event loop
+        query = firestore_client.collection('archived_channels').where('status', '==', 'pending')
+        docs = await asyncio.to_thread(lambda: list(query.stream()))
+
         for doc in docs:
             data = doc.to_dict()
             channel_id = int(doc.id)
@@ -94,9 +96,12 @@ async def cleanup_old_archives(client: discord.Client, firestore_client):
     logger.info(f"Archive cleanup complete. Processed {len(deleted_channels_info)} deletions.")
 
     # --- Generate Report ---
-    summary_channel_id_str = os.environ.get("LOTSLARP_BOT_SUMMARY_CHANNEL_ID")
+    summary_channel_id_str = os.environ.get("LOTSLARP_BOT_REPORT_CHANNEL_ID")
     if not summary_channel_id_str:
-        logger.warning("LOTSLARP_BOT_SUMMARY_CHANNEL_ID not set. Skipping cleanup report.")
+        summary_channel_id_str = os.environ.get("LOTSLARP_BOT_SUMMARY_CHANNEL_ID")
+    
+    if not summary_channel_id_str:
+        logger.warning("Neither LOTSLARP_BOT_REPORT_CHANNEL_ID nor LOTSLARP_BOT_SUMMARY_CHANNEL_ID set. Skipping cleanup report.")
         return
 
     try:
@@ -122,6 +127,6 @@ async def cleanup_old_archives(client: discord.Client, firestore_client):
             await summary_channel.send(chunk)
             
     except ValueError:
-        logger.error("Invalid LOTSLARP_BOT_SUMMARY_CHANNEL_ID format.")
+        logger.error("Invalid LOTSLARP_BOT_REPORT_CHANNEL_ID or LOTSLARP_BOT_SUMMARY_CHANNEL_ID format.")
     except Exception as e:
         logger.error(f"Failed to send cleanup report: {e}")

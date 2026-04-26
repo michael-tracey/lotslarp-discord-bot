@@ -86,7 +86,8 @@ echo "$VM_IP ansible_user=$SSH_USER ansible_ssh_private_key_file=$SSH_KEY_PATH a
 
 # Run Playbook
 # We pass the local .env file path to Ansible
-ansible-playbook -i "$INVENTORY_FILE" ansible/playbook.yml \
+# Adding -vv for more detailed logging of tasks
+ansible-playbook -vv -i "$INVENTORY_FILE" ansible/playbook.yml \
     --extra-vars "docker_image=$FULL_IMAGE_NAME env_file_src=$(pwd)/.env map_url=$MAP_URL"
 
 # 5. Cleanup Old Images

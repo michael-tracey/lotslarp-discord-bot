@@ -3,7 +3,7 @@ import os
 import logging
 import asyncio
 from datetime import datetime
-from modules.utils import smart_chunk_message
+from modules.utils import smart_chunk_message, get_admin_roles
 
 logger = logging.getLogger(__name__)
 
@@ -79,8 +79,8 @@ async def handle_share_interaction(interaction: discord.Interaction, firestore_c
                 await interaction.response.send_message(f"Failed to share summary: {e}", ephemeral=True)
             else:
                 await interaction.followup.send(f"Failed to share summary: {e}", ephemeral=True)
-        except:
-            pass
+        except Exception:
+            logger.debug("Could not send error response to interaction (already acknowledged or expired)")
 
 
 class ChannelSummarize:
@@ -90,14 +90,17 @@ class ChannelSummarize:
         self.lore_manager = lore_manager
         self.name = "summarize"
         self.summary_role_name = os.environ.get("LOTSLARP_DISCORD_BOT_SUMMARY_ROLE_NAME")
-        self.admin_role_name = os.environ.get("LOTSLARP_BOT_ADMIN_USER", "@storytellers").strip("@")
+        self.admin_roles = get_admin_roles()
         
         # Get the summary output channel ID
         try:
-            channel_id_str = os.environ.get("LOTSLARP_BOT_SUMMARY_CHANNEL_ID", "0")
-            self.summary_channel_id = int(channel_id_str.strip().strip("'").strip("'"))
+            channel_id_str = os.environ.get("LOTSLARP_BOT_SUMMARY_CHANNEL_ID")
+            if not channel_id_str:
+                channel_id_str = os.environ.get("LOTSLARP_BOT_REPORT_CHANNEL_ID", "0")
+            
+            self.summary_channel_id = int(channel_id_str.strip().strip("'").strip('"'))
         except (ValueError, TypeError) as e:
-            logger.error(f"Invalid LOTSLARP_BOT_SUMMARY_CHANNEL_ID value: '{os.environ.get('LOTSLARP_BOT_SUMMARY_CHANNEL_ID')}'. Using 0 as default. Error: {e}")
+            logger.error(f"Invalid LOTSLARP_BOT_SUMMARY_CHANNEL_ID or REPORT_CHANNEL_ID: {e}")
             self.summary_channel_id = 0
 
     async def run(self, client: discord.Client, message: discord.Message):
@@ -111,7 +114,7 @@ class ChannelSummarize:
         has_permission = False
         if isinstance(message.author, discord.Member):
             for role in message.author.roles:
-                if role.name == self.admin_role_name:
+                if role.name in self.admin_roles:
                     has_permission = True
                     break
         
@@ -133,7 +136,7 @@ class ChannelSummarize:
         
         # Check if summary output channel is configured
         if not self.summary_channel_id:
-            logger.error("Summary output channel not configured (LOTSLARP_BOT_SUMMARY_CHANNEL_ID).")
+            logger.error("Summary output channel not configured (LOTSLARP_BOT_SUMMARY_CHANNEL_ID or LOTSLARP_BOT_REPORT_CHANNEL_ID).")
             return "Summary output channel is not configured. Please set LOTSLARP_BOT_SUMMARY_CHANNEL_ID."
         
         # Get the target channel (works across all guilds the bot has access to)

@@ -9,6 +9,7 @@ import numpy as np
 import pytz
 from datetime import datetime, timedelta
 from google.cloud.firestore_v1 import FieldFilter
+from modules.utils import get_admin_roles
 
 try:
     import matplotlib
@@ -27,7 +28,7 @@ class Voice:
         self.logs_ref = self.db.collection('voice_logs')
         self.status_logs_ref = self.db.collection('voice_status_logs')
         self.name = "voice-report"
-        self.admin_role_name = os.environ.get("LOTSLARP_BOT_ADMIN_USER", "@storytellers").strip("@")
+        self.admin_roles = get_admin_roles()
         
         # Load Timezone
         tz_name = os.environ.get("LOTSLARP_BOT_TIMEZONE", "America/New_York")
@@ -39,10 +40,15 @@ class Voice:
             self.timezone = pytz.UTC
 
         try:
-            channel_id_str = os.environ.get("LOTSLARP_BOT_VOICE_REPORT_CHANNEL_ID", "0")
+            # All reports should go to LOTSLARP_BOT_REPORT_CHANNEL_ID if set,
+            # falling back to the module-specific LOTSLARP_BOT_VOICE_REPORT_CHANNEL_ID.
+            channel_id_str = os.environ.get("LOTSLARP_BOT_REPORT_CHANNEL_ID")
+            if not channel_id_str:
+                channel_id_str = os.environ.get("LOTSLARP_BOT_VOICE_REPORT_CHANNEL_ID", "0")
+            
             self.report_channel_id = int(channel_id_str.strip().strip('"').strip("'"))
         except (ValueError, TypeError) as e:
-            logger.error(f"Invalid LOTSLARP_BOT_VOICE_REPORT_CHANNEL_ID: {e}")
+            logger.error(f"Invalid LOTSLARP_BOT_REPORT_CHANNEL_ID or VOICE_REPORT_CHANNEL_ID: {e}")
             self.report_channel_id = 0
 
     def _to_local(self, dt):
@@ -188,7 +194,7 @@ class Voice:
         has_permission = False
         if isinstance(message.author, discord.Member):
             for role in message.author.roles:
-                if role.name == self.admin_role_name:
+                if role.name in self.admin_roles:
                     has_permission = True
                     break
         
@@ -210,7 +216,7 @@ class Voice:
         if self.report_channel_id:
             target_channel = client.get_channel(self.report_channel_id)
             if not target_channel:
-                logger.warning(f"Configured LOTSLARP_BOT_VOICE_REPORT_CHANNEL_ID {self.report_channel_id} not found.")
+                logger.warning(f"Configured report channel ID {self.report_channel_id} not found (Check LOTSLARP_BOT_REPORT_CHANNEL_ID or VOICE_REPORT_CHANNEL_ID).")
         
         if not target_channel:
             target_channel = message.channel

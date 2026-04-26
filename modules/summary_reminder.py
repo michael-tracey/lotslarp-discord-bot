@@ -5,6 +5,7 @@ import re
 import sys
 import asyncio
 from datetime import datetime, timedelta
+from modules.utils import get_admin_roles
 
 logger = logging.getLogger(__name__)
 
@@ -37,29 +38,32 @@ async def handle_remind_interaction(interaction: discord.Interaction):
             logger.warning(f"Reminder failed: Channel ID {channel_id} not found.")
             return
 
+        # Defer immediately — sending to the target channel can exceed Discord's 3-second response window
+        await interaction.response.defer()
+
         # Send the reminder message
         reminder_msg = get_reminder_message(target_channel)
         await target_channel.send(reminder_msg)
         logger.info(f"Reminder sent successfully to channel '{target_channel.name}' (ID: {target_channel.id})")
-        
+
         # Disable the button on the report message
         view = discord.ui.View(timeout=None)
         button = discord.ui.Button(
-            label="Reminder Sent", 
-            style=discord.ButtonStyle.secondary, 
-            disabled=True, 
+            label="Reminder Sent",
+            style=discord.ButtonStyle.secondary,
+            disabled=True,
             emoji="✅"
         )
         view.add_item(button)
-        
-        await interaction.response.edit_message(view=view)
+
+        await interaction.edit_original_response(view=view)
 
     except Exception as e:
         logger.error(f"Error handling reminder interaction: {e}", exc_info=True)
         try:
             await interaction.response.send_message(f"Failed to send reminder: {e}", ephemeral=True)
-        except:
-            pass
+        except Exception:
+            logger.debug("Could not send error response to interaction (already acknowledged or expired)")
 
 def get_reminder_message(channel):
     msg = (
@@ -77,7 +81,7 @@ def get_reminder_message(channel):
 class SummaryReminder:
     def __init__(self):
         self.name = "stale-channels"
-        self.admin_role_name = os.environ.get("LOTSLARP_BOT_ADMIN_USER", "@storytellers").strip("@")
+        self.admin_roles = get_admin_roles()
         
         try:
             self.msg_count_threshold = int(os.environ.get("LOTSLARP_BOT_SUMMARY_REMINDER_MESSAGES_COUNT", 3))
@@ -86,7 +90,9 @@ class SummaryReminder:
             self.default_throttle_count = int(os.environ.get("LOTSLARP_BOT_SUMMARY_THROTTLE_CHANNEL_COUNT", 25))
             self.min_words = int(os.environ.get("LOTSLARP_BOT_SUMMARY_REMINDER_MIN_WORDS", 5))
             
-            output_channel_str = os.environ.get("LOTSLARP_BOT_SUMMARY_CHANNEL_ID", "0")
+            output_channel_str = os.environ.get("LOTSLARP_BOT_REPORT_CHANNEL_ID")
+            if not output_channel_str:
+                output_channel_str = os.environ.get("LOTSLARP_BOT_SUMMARY_CHANNEL_ID", "0")
             self.output_channel_id = int(output_channel_str.strip().strip("'").strip("'"))
         except ValueError as e:
             logger.error(f"Invalid env var for SummaryReminder: {e}")
@@ -124,7 +130,7 @@ class SummaryReminder:
         has_permission = False
         if isinstance(message.author, discord.Member):
             for role in message.author.roles:
-                if role.name == self.admin_role_name:
+                if role.name in self.admin_roles:
                     has_permission = True
                     break
         
@@ -136,8 +142,8 @@ class SummaryReminder:
         # 2. Get Output Channel
         output_channel = client.get_channel(self.output_channel_id)
         if not output_channel:
-            logger.error(f"Summary output channel (ID {self.output_channel_id}) not found.")
-            await message.channel.send("❌ Summary output channel (LOTSLARP_BOT_SUMMARY_CHANNEL_ID) not found.")
+            logger.error(f"Report output channel (ID {self.output_channel_id}) not found.")
+            await message.channel.send("❌ Report output channel (LOTSLARP_BOT_REPORT_CHANNEL_ID or LOTSLARP_BOT_SUMMARY_CHANNEL_ID) not found.")
             return
 
         # 3. Parse Arguments

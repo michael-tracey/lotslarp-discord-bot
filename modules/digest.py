@@ -4,7 +4,7 @@ import asyncio
 import logging
 from datetime import datetime, timedelta
 from modules import pdf_generator
-from modules.utils import smart_chunk_message, compress_pdf
+from modules.utils import smart_chunk_message, compress_pdf, get_admin_roles
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +15,18 @@ class Digest:
         self.pdf_generator = pdf_gen
         self.lore_manager = lore_manager
         self.name = "digest"
-        self.admin_role_name = os.environ.get("LOTSLARP_BOT_ADMIN_USER", "@storytellers").strip("@")
+        self.admin_roles = get_admin_roles()
+
+        # Get the summary output channel ID
+        try:
+            channel_id_str = os.environ.get("LOTSLARP_BOT_REPORT_CHANNEL_ID")
+            if not channel_id_str:
+                channel_id_str = os.environ.get("LOTSLARP_BOT_SUMMARY_CHANNEL_ID", "0")
+            
+            self.report_channel_id = int(channel_id_str.strip().strip("'").strip('"'))
+        except (ValueError, TypeError) as e:
+            logger.error(f"Invalid LOTSLARP_BOT_REPORT_CHANNEL_ID or SUMMARY_CHANNEL_ID: {e}")
+            self.report_channel_id = 0
 
     async def run(self, client: discord.Client, message: discord.Message):
         logger.info(f"Command started: /digest by {message.author} in {message.channel}")
@@ -24,7 +35,7 @@ class Digest:
         has_permission = False
         if isinstance(message.author, discord.Member):
             for role in message.author.roles:
-                if role.name == self.admin_role_name:
+                if role.name in self.admin_roles:
                     has_permission = True
                     break
         
@@ -132,10 +143,14 @@ class Digest:
         logger.info("Generating PDF...")
         pdf_title = f"{timeframe.capitalize()} Summary Digest"
         pdf_path = f"/tmp/summary_{timeframe}_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}.pdf"
+
+        # Track all temporary files for cleanup
+        temp_files = [pdf_path]
+
         pdf_success = self.pdf_generator.create_digest_pdf(
-            pdf_path, 
-            executive_summary, 
-            messages_for_pdf, 
+            pdf_path,
+            executive_summary,
+            messages_for_pdf,
             title=pdf_title,
             date_range=date_range,
             message_stats=message_stats
@@ -157,7 +172,7 @@ class Digest:
 
         # Prepare Discord message with summary
         discord_message = f"**{pdf_title} - {date_range}**\n\n"
-        
+
         discord_message += "**Storyteller Summary:**\n"
         discord_message += executive_summary + "\n"
 
@@ -166,53 +181,76 @@ class Digest:
         discord_message += "**Message Statistics:**\n"
         for stat in message_stats:
             discord_message += f"• {stat}\n"
-        
+
         # Use smart chunking
         chunks = smart_chunk_message(discord_message, 1950)
 
         # Send PDF to channel with summary
         try:
             logger.info(f"Sending digest to {message.channel.name}...")
-            
+
             # Compress by default
             DISCORD_LIMIT_BYTES = 10 * 1024 * 1024
             logger.info(f"Optimizing PDF size for {pdf_path}...")
             compressed_path = pdf_path.replace(".pdf", "_compressed.pdf")
-            
+
             # Start with printer (300dpi)
             if await compress_pdf(pdf_path, compressed_path, power=2):
+                temp_files.append(compressed_path)
                 pdf_path = compressed_path
                 # If still too large, try ebook (150dpi)
                 if os.path.getsize(pdf_path) > DISCORD_LIMIT_BYTES:
                     ebook_path = pdf_path.replace(".pdf", "_ebook.pdf")
                     if await compress_pdf(pdf_path, ebook_path, power=3):
+                        temp_files.append(ebook_path)
                         pdf_path = ebook_path
                         # If still too large, try max (72dpi)
                         if os.path.getsize(pdf_path) > DISCORD_LIMIT_BYTES:
                             max_path = pdf_path.replace(".pdf", "_max.pdf")
                             if await compress_pdf(pdf_path, max_path, power=4):
+                                temp_files.append(max_path)
                                 pdf_path = max_path
 
             file_size = os.path.getsize(pdf_path)
+
+            # Determine output channel
+            target_output_channel = None
+            if self.report_channel_id:
+                target_output_channel = client.get_channel(self.report_channel_id)
+
+            if not target_output_channel:
+                target_output_channel = message.channel
+                if self.report_channel_id:
+                     await message.channel.send(f"⚠️ Configured report channel not found. Sending report here instead.")
+
             if file_size > DISCORD_LIMIT_BYTES:
                 await message.channel.send(f"⚠️ The PDF report is very large ({file_size/1024/1024:.2f} MB) and may fail to upload.")
 
             with open(pdf_path, "rb") as f:
                 pdf_file = discord.File(f, filename=os.path.basename(pdf_path))
-                
+
                 for i, chunk in enumerate(chunks):
                     if i == len(chunks) - 1:
-                        await message.channel.send(chunk, file=pdf_file)
+                        await target_output_channel.send(chunk, file=pdf_file)
                     else:
-                        await message.channel.send(chunk)
+                        await target_output_channel.send(chunk)
                         await asyncio.sleep(0.5)
+
+            if target_output_channel.id != message.channel.id:
+                await message.channel.send(f"✅ Digest report sent to {target_output_channel.mention}.")
+
             logger.info("Digest sent successfully.")
         except Exception as e:
             logger.error(f"Failed to send digest: {e}", exc_info=True)
             await message.channel.send(f"An error occurred while sending the PDF report: {e}")
         finally:
-            # Clean up the generated PDF file
-            if os.path.exists(pdf_path):
-                os.remove(pdf_path)
+            # Clean up all generated PDF files
+            for tmp_file in temp_files:
+                if os.path.exists(tmp_file):
+                    try:
+                        os.remove(tmp_file)
+                        logger.info(f"Removed temporary PDF file: {tmp_file}")
+                    except Exception as e:
+                        logger.error(f"Failed to remove temporary file {tmp_file}: {e}")
         
         return None

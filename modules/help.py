@@ -1,13 +1,14 @@
 import discord
 import os
 import logging
+from modules.utils import get_admin_roles
 
 logger = logging.getLogger(__name__)
 
 class LotslarpHelp:
     def __init__(self):
         self.name = "lotslarp-help"
-        self.admin_role_name = os.environ.get("LOTSLARP_BOT_ADMIN_USER", "@storytellers").strip("@")
+        self.admin_roles = get_admin_roles()
 
     async def run(self, client: discord.Client, message: discord.Message):
         """
@@ -19,7 +20,7 @@ class LotslarpHelp:
         is_admin = False
         if isinstance(message.author, discord.Member):
             for role in message.author.roles:
-                if role.name == self.admin_role_name:
+                if role.name in self.admin_roles:
                     is_admin = True
                     break
         
@@ -41,19 +42,27 @@ class LotslarpHelp:
         
         # Admin Commands
         if is_admin:
-            admin_cmds = [
-                "**/lotslarp archive [#channel]**: Archive a channel to PDF, make it read-only, and post it to ST archives.",
-                "**/lotslarp unarchive [#channel]**: Cancel deletion and unarchive a channel (restore permissions).",
-                "**/lotslarp purge-archives**: Manually trigger the daily cleanup and reporting job.",
+            report_cmds = [
                 "**/lotslarp summarize <channel_id>**: Summarize a specific channel since the last summary mention.",
                 "**/lotslarp report month**: Generate a summary from the **last game** until today.",
                 "**/lotslarp report digest [day|week|month|now]**: Generate a PDF digest (defaults to 'month'). Use 'now' to force the scheduled digest.",
                 "**/lotslarp report voice [days]**: See who has been active in voice channels.",
-                "**/lotslarp stale**: Find roleplay channels that haven't been summarized recently.",
-                "**/lotslarp status**: Check the bot's health, database, and AI connection.",
-                "**/lotslarp instructions**: View detailed guides for Storyteller features."
+                "**/lotslarp group summarize**: Summarize a group (last 30 days).",
+                "**/lotslarp stale**: Find channels that haven't been summarized recently."
             ]
-            embed.add_field(name="🛡️ Storyteller Commands", value="\n".join(admin_cmds), inline=False)
+            embed.add_field(name="📊 Storyteller Reports", value="\n".join(report_cmds), inline=False)
+
+            mgmt_cmds = [
+                "**/lotslarp group list**: List all channel groups.",
+                "**/lotslarp group <name> add [#channel]**: Add a channel to a group.",
+                "**/lotslarp group <name> rename <new_name>**: Rename a channel group.",
+                "**/lotslarp archive [#channel]**: Archive a channel to PDF and make it read-only.",
+                "**/lotslarp unarchive [#channel]**: Restore permissions to an archived channel.",
+                "**/lotslarp status**: Check bot health and AI connection.",
+                "**/lotslarp instructions**: View detailed Storyteller guides.",
+                "**/lotslarp purge-archives**: Manually trigger cleanup job."
+            ]
+            embed.add_field(name="🛡️ Management & Groups", value="\n".join(mgmt_cmds), inline=False)
             
             embed.set_footer(text="Tip: Mentions of the summary role are used to track where reports leave off.")
 

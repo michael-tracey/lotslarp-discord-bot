@@ -9,10 +9,18 @@
     app_dir: "/opt/lotslarp-bot"
 
   tasks:
+    - name: Wait for apt lock
+      shell: "while fuser /var/lib/dpkg/lock-frontend /var/lib/apt/lists/lock /var/lib/dpkg/lock >/dev/null 2>&1; do sleep 5; done"
+      timeout: 300
+
     - name: Update apt cache
       apt:
         update_cache: yes
         cache_valid_time: 3600
+      register: apt_update_result
+      until: apt_update_result is success
+      retries: 5
+      delay: 10
 
     - name: Check for upgradable packages
       shell: apt list --upgradable 2>/dev/null | grep -v "Listing..." | wc -l
@@ -23,14 +31,18 @@
       debug:
         msg: "Upgrading {{ upgrade_count.stdout | trim }} packages. This may take several minutes..."
 
-    - name: Upgrade all packages
+    - name: Upgrade all packages (dist-upgrade)
       apt:
         upgrade: dist
         force_apt_get: yes
-      async: 1800 # Allow up to 30 minutes
-      poll: 15    # Check status every 15 seconds to show progress
+      register: upgrade_result
 
-    - name: Install dependencies
+    - name: Show upgrade details if failed
+      debug:
+        var: upgrade_result
+      when: upgrade_result is failed
+
+    - name: Install base dependencies
       apt:
         name:
           - apt-transport-https
@@ -40,18 +52,14 @@
           - python3-pip
           - python3-docker
         state: present
-      async: 600 # Allow up to 10 minutes
-      poll: 10   # Check status every 10 seconds
 
     # Docker installation simplified to use Ubuntu's native package
     # This avoids 404 errors with external Docker repositories
-    - name: Install Docker
+    - name: Install Docker (Ubuntu native)
       apt:
         name: docker.io
         state: present
         update_cache: yes
-      async: 600 # Allow up to 10 minutes
-      poll: 10   # Check status every 10 seconds
 
     - name: Ensure Docker service is running
       service:

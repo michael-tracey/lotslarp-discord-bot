@@ -4,7 +4,7 @@ import discord
 import asyncio
 from datetime import datetime, timedelta, timezone
 from google.cloud import firestore
-from modules.utils import smart_chunk_message, get_previous_game_date, get_date_of_weekday_in_month, compress_pdf
+from modules.utils import smart_chunk_message, get_previous_game_date, get_date_of_weekday_in_month, compress_pdf, get_admin_roles
 
 logger = logging.getLogger(__name__)
 
@@ -15,10 +15,16 @@ class MonthlySummary:
         self.gemini_model = gemini_model
         self.pdf_gen = pdf_gen
         self.lore_manager = lore_manager
-        self.admin_role_name = os.environ.get("LOTSLARP_BOT_ADMIN_USER", "@storytellers").strip("@")
+        self.admin_roles = get_admin_roles()
         
         try:
-            channel_id_str = os.environ.get("LOTSLARP_DISCORD_BOT_DIGEST_CHANNEL_ID", "0")
+            # Check LOTSLARP_BOT_SUMMARY_CHANNEL_ID first, then REPORT, then DIGEST
+            channel_id_str = os.environ.get("LOTSLARP_BOT_SUMMARY_CHANNEL_ID")
+            if not channel_id_str:
+                channel_id_str = os.environ.get("LOTSLARP_BOT_REPORT_CHANNEL_ID")
+            if not channel_id_str:
+                channel_id_str = os.environ.get("LOTSLARP_DISCORD_BOT_DIGEST_CHANNEL_ID", "0")
+            
             self.digest_channel_id = int(channel_id_str.strip().strip('"').strip("'"))
         except (ValueError, TypeError) as e:
             logger.error(f"Invalid DIGEST_CHANNEL_ID: {e}")
@@ -36,7 +42,7 @@ class MonthlySummary:
         has_permission = False
         if isinstance(message.author, discord.Member):
             for role in message.author.roles:
-                if role.name == self.admin_role_name:
+                if role.name in self.admin_roles:
                     has_permission = True
                     break
         
@@ -45,7 +51,10 @@ class MonthlySummary:
             await message.channel.send("🚫 You do not have permission to run this command.")
             return
 
-        await message.add_reaction("⏳")
+        try:
+            await message.add_reaction("⏳")
+        except (discord.Forbidden, discord.NotFound):
+            pass
 
         # Configuration
         try:
@@ -84,16 +93,26 @@ class MonthlySummary:
                 channel_id=self.digest_channel_id
             )
             if result:
-                await message.add_reaction("✅")
+                try:
+                    await message.add_reaction("✅")
+                except (discord.Forbidden, discord.NotFound):
+                    pass
+                target_channel = client.get_channel(self.digest_channel_id)
+                if target_channel and target_channel.id != message.channel.id:
+                    await message.channel.send(f"✅ Monthly summary sent to {target_channel.mention}.")
                 logger.info("Manual monthly summary completed successfully.")
             else:
                 logger.warning("Manual monthly summary completed but returned False (likely no messages or configuration error).")
-                # Still marking as 'done' for the user, or maybe we should add a different emoji?
-                # Sticking to original behavior but logging it.
-                await message.add_reaction("✅") 
+                try:
+                    await message.add_reaction("✅")
+                except (discord.Forbidden, discord.NotFound):
+                    pass
         except Exception as e:
             logger.error(f"Manual monthly summary failed: {e}", exc_info=True)
-            await message.add_reaction("❌")
+            try:
+                await message.add_reaction("❌")
+            except (discord.Forbidden, discord.NotFound):
+                pass
             await message.channel.send(f"**Error:** {str(e)}")
 
 
@@ -385,6 +404,9 @@ async def generate_and_send_summary(client, summary_module, gemini_model, pdf_ge
     pdf_filename = f"monthly_summary_{date_str}.pdf"
     pdf_path = f"/tmp/{pdf_filename}"
     
+    # Track all temporary files for cleanup
+    temp_files = [pdf_path]
+    
     date_range_str = f"{start_date.strftime('%B %d')} - {end_date.strftime('%B %d, %Y')}"
 
     pdf_success = await asyncio.to_thread(
@@ -414,16 +436,19 @@ async def generate_and_send_summary(client, summary_module, gemini_model, pdf_ge
         
         compressed_path = pdf_path.replace(".pdf", "_compressed.pdf")
         if await compress_pdf(pdf_path, compressed_path, power=2):
+            temp_files.append(compressed_path)
             pdf_path = compressed_path
             # If still too large, try ebook
             if os.path.getsize(pdf_path) > DISCORD_LIMIT_BYTES:
                 ebook_path = pdf_path.replace(".pdf", "_ebook.pdf")
                 if await compress_pdf(pdf_path, ebook_path, power=3):
+                    temp_files.append(ebook_path)
                     pdf_path = ebook_path
                     # If still too large, try max
                     if os.path.getsize(pdf_path) > DISCORD_LIMIT_BYTES:
                         max_path = pdf_path.replace(".pdf", "_max.pdf")
                         if await compress_pdf(pdf_path, max_path, power=4):
+                            temp_files.append(max_path)
                             pdf_path = max_path
 
         file_size = os.path.getsize(pdf_path)
@@ -456,5 +481,10 @@ async def generate_and_send_summary(client, summary_module, gemini_model, pdf_ge
         logger.error(f"Failed to send monthly summary: {e}", exc_info=True)
         return False
     finally:
-        if os.path.exists(pdf_path):
-            os.remove(pdf_path)
+        for tmp_file in temp_files:
+            if os.path.exists(tmp_file):
+                try:
+                    os.remove(tmp_file)
+                    logger.info(f"Removed temporary PDF file: {tmp_file}")
+                except Exception as e:
+                    logger.error(f"Failed to remove temporary file {tmp_file}: {e}")

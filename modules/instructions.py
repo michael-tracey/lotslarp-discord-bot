@@ -1,13 +1,14 @@
 import discord
 import os
 import logging
+from modules.utils import get_admin_roles
 
 logger = logging.getLogger(__name__)
 
 class Instructions:
     def __init__(self):
         self.name = "lotslarp-instructions"
-        self.admin_role_name = os.environ.get("LOTSLARP_BOT_ADMIN_USER", "@storytellers").strip("@")
+        self.admin_roles = get_admin_roles()
 
     async def run(self, client: discord.Client, message: discord.Message):
         """
@@ -19,7 +20,7 @@ class Instructions:
         is_admin = False
         if isinstance(message.author, discord.Member):
             for role in message.author.roles:
-                if role.name == self.admin_role_name:
+                if role.name in self.admin_roles:
                     is_admin = True
                     break
         
@@ -66,6 +67,16 @@ class Instructions:
             value=(
                 "The bot uses a **Lore Glossary**. If roleplay messages contain keywords found in the glossary, "
                 "those lore entries are automatically fed to the AI as context to improve summary accuracy."
+            ),
+            inline=False
+        )
+
+        embed.add_field(
+            name="👥 Channel Groups",
+            value=(
+                "You can organize multiple roleplay channels into **Groups** (e.g., 'Southeast', 'Garou'). "
+                "Use `/lotslarp group <name> add #channel` to build a group, and `/lotslarp group <name> summarize` "
+                "to get a long-form report of all activity in those channels from the last 30 days."
             ),
             inline=False
         )

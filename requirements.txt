@@ -17,3 +17,4 @@ firebase-admin
 matplotlib
 pytz
 weasyprint
+google-cloud-storage

@@ -11,6 +11,7 @@ from modules.digest import Digest
 from modules.monthly_summary import MonthlySummary
 from modules.summary_reminder import SummaryReminder
 from modules.channel_summarize import ChannelSummarize
+from modules.channel_group import ChannelGroup
 from modules.archive_channel import ArchiveChannel, UnarchiveChannel
 from modules.archive_cleanup import cleanup_old_archives
 
@@ -48,6 +49,9 @@ class Lotslarp:
         
         # Channel Summarize Handler
         self.summarize_handler = ChannelSummarize(gemini_model, firestore_client, lore_manager)
+        
+        # Group Summarize/Management Handler
+        self.group_handler = ChannelGroup(gemini_model, firestore_client, lore_manager)
         
         # Archive Handler
         self.archive_handler = ArchiveChannel(firestore_client)
@@ -117,6 +121,9 @@ class Lotslarp:
             message.content = original_content # Restore
             if result:
                  await message.channel.send(result)
+
+        elif subcommand == "group":
+            await self.group_handler.run(client, message)
 
         elif subcommand == "report":
             if len(parts) < 3:

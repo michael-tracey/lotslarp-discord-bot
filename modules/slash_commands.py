@@ -10,6 +10,7 @@ defer the interaction first, then construct InteractionContext, then call the
 handler's run() method — all channel.send() calls route to followup.send().
 """
 import os
+import asyncio
 import discord
 from discord import app_commands
 import logging
@@ -68,6 +69,9 @@ class InteractionContext:
     async def add_reaction(self, emoji: str) -> None:
         pass  # no-op; interactions don't support reactions
 
+    async def delete(self) -> None:
+        pass  # no-op; slash command interactions can't be deleted like messages
+
 
 # ── Permission helper ─────────────────────────────────────────────────────────
 
@@ -82,6 +86,245 @@ async def _deny(interaction: discord.Interaction) -> None:
     await interaction.response.send_message(
         "🚫 You do not have permission to run this command.", ephemeral=True
     )
+
+
+# ── Lore paginator ───────────────────────────────────────────────────────────
+
+class LoreListView(discord.ui.View):
+    """Paginated embed browser for the lore database."""
+    PER_PAGE = 10
+
+    def __init__(self, entries: list):
+        super().__init__(timeout=120)
+        self.entries = entries
+        self.page = 0
+        self.total_pages = max(1, (len(entries) + self.PER_PAGE - 1) // self.PER_PAGE)
+        self._sync_buttons()
+
+    def _sync_buttons(self):
+        self.prev_btn.disabled = (self.page == 0)
+        self.next_btn.disabled = (self.page >= self.total_pages - 1)
+
+    def build_embed(self) -> discord.Embed:
+        start = self.page * self.PER_PAGE
+        page_entries = self.entries[start : start + self.PER_PAGE]
+        embed = discord.Embed(
+            title=f"📚 Lore Database — {len(self.entries)} entries",
+            color=discord.Color.dark_purple(),
+        )
+        embed.set_footer(text=f"Page {self.page + 1} of {self.total_pages}  ·  Use /lore view <title> to read a full entry")
+        for entry in page_entries:
+            preview = entry['content']
+            if len(preview) > 120:
+                preview = preview[:120] + "..."
+            kw_str = ", ".join(entry['keywords'][:6]) if entry['keywords'] else "none"
+            embed.add_field(
+                name=entry['title'],
+                value=f"{preview}\n*Keywords: {kw_str}*",
+                inline=False,
+            )
+        return embed
+
+    @discord.ui.button(label="◀ Prev", style=discord.ButtonStyle.secondary)
+    async def prev_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.page -= 1
+        self._sync_buttons()
+        await interaction.response.edit_message(embed=self.build_embed(), view=self)
+
+    @discord.ui.button(label="Next ▶", style=discord.ButtonStyle.secondary)
+    async def next_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.page += 1
+        self._sync_buttons()
+        await interaction.response.edit_message(embed=self.build_embed(), view=self)
+
+
+# ── Offboard helpers ─────────────────────────────────────────────────────────
+
+async def _member_autocomplete(
+    interaction: discord.Interaction, current: str
+) -> list[app_commands.Choice]:
+    """Autocomplete for discord members across all guilds the bot is in."""
+    logger.info(f"[autocomplete] _member_autocomplete called, current={repr(current)}")
+    try:
+        seen = set()
+        choices = []
+        current_lower = current.lower()
+        for guild in interaction.client.guilds:
+            members = list(guild.members)
+            logger.info(f"[autocomplete] guild={guild.name!r} cache_size={len(members)}")
+            for member in members:
+                if member.bot or member.id in seen:
+                    continue
+                seen.add(member.id)
+                display = member.display_name or member.name
+                username = member.name
+                if current_lower and current_lower not in display.lower() and current_lower not in username.lower():
+                    continue
+                label = f"{display} ({username})"[:100]
+                if not label.strip():
+                    continue
+                choices.append(app_commands.Choice(name=label, value=str(member.id)))
+                if len(choices) >= 25:
+                    return choices
+        logger.info(f"[autocomplete] returning {len(choices)} choices")
+        return choices
+    except Exception as e:
+        logger.error(f"[autocomplete] error: {e}", exc_info=True)
+        return []
+
+
+async def _find_user_channels(client: discord.Client, user_id: int) -> dict:
+    """Returns {guild: [channel, ...]} for private text channels the user can read, across all guilds."""
+    found = {}
+    for guild in client.guilds:
+        member = guild.get_member(user_id)
+        if not member:
+            continue
+        me = guild.me
+        everyone = guild.default_role
+        channels = []
+        for channel in guild.text_channels:
+            try:
+                member_perms = channel.permissions_for(member)
+                bot_perms = channel.permissions_for(me)
+                everyone_perms = channel.permissions_for(everyone)
+                if member_perms.read_messages and bot_perms.read_messages and not everyone_perms.read_messages:
+                    channels.append(channel)
+            except Exception:
+                continue
+        if channels:
+            found[guild] = channels
+    return found
+
+
+async def _get_archived_channel_ids(firestore_client, channel_ids: list) -> set:
+    """Returns the subset of channel_ids that have an archived_channels Firestore record."""
+    if not firestore_client or not channel_ids:
+        return set()
+    archived = set()
+    try:
+        for ch_id in channel_ids:
+            cid = str(ch_id)
+            doc = await asyncio.to_thread(
+                lambda cid=cid: firestore_client.collection('archived_channels').document(cid).get()
+            )
+            if doc.exists:
+                archived.add(ch_id)
+    except Exception as e:
+        logger.warning(f"Could not check archived_channels collection: {e}")
+    return archived
+
+
+def _build_offboard_header(user: discord.Member, channels_by_guild: dict, archived_ids: set) -> discord.Embed:
+    """Summary embed posted once at the top of an offboard session."""
+    total = sum(len(chs) for chs in channels_by_guild.values())
+    already_count = sum(
+        1 for chs in channels_by_guild.values() for ch in chs if ch.id in archived_ids
+    )
+    embed = discord.Embed(
+        title=f"🚪 Offboard: {user.display_name} ({user.name})",
+        color=discord.Color.orange(),
+    )
+    if total == 0:
+        embed.description = f"No private channels found for {user.mention}."
+    else:
+        embed.description = (
+            f"Found **{total}** private channel(s) for {user.mention} "
+            f"across **{len(channels_by_guild)}** server(s)"
+            + (f" — {already_count} already archived." if already_count else ".")
+        )
+        embed.set_footer(text="Archive sends the PDF to that channel. Remove exits the player from the channel.")
+    return embed
+
+
+class _OffboardMsg:
+    """Message shim for ArchiveChannel.run() — routes all archive output to the target channel itself."""
+
+    class _Proxy:
+        def __init__(self, ch):
+            self._ch = ch
+            self.id = ch.id
+            self.name = getattr(ch, 'name', '')
+            self.mention = f"<#{ch.id}>"
+            self.guild = getattr(ch, 'guild', None)
+
+        async def send(self, content=None, **kwargs):
+            return await self._ch.send(content, **kwargs)
+
+        def permissions_for(self, member):
+            return self._ch.permissions_for(member)
+
+    def __init__(self, target: discord.TextChannel, author):
+        self.guild = target.guild
+        self.author = author
+        self.content = ""
+        # No channel_mentions → archive_channel.run() uses message.channel as the target,
+        # so all status updates and the final PDF land in the target channel itself.
+        self.channel_mentions = []
+        self.channel = self._Proxy(target)
+
+    async def add_reaction(self, emoji: str) -> None:
+        pass
+
+
+class ChannelOffboardView(discord.ui.View):
+    """One Archive + one Remove button for a single channel in the offboard workflow.
+    Each channel gets its own message; clicking a button edits that message in place."""
+
+    def __init__(self, channel: discord.TextChannel, user: discord.Member, archive_handler, client: discord.Client):
+        super().__init__(timeout=None)
+        self.channel = channel
+        self.user = user
+        self.archive_handler = archive_handler
+        self.client = client
+
+    @discord.ui.button(label="Archive", style=discord.ButtonStyle.primary)
+    async def archive(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not _is_admin(interaction):
+            await interaction.response.send_message("🚫 Admin only.", ephemeral=True)
+            return
+        await interaction.response.edit_message(
+            content=f"{self.channel.mention} **({self.channel.guild.name})** — 📦 Archive queued",
+            view=None,
+        )
+        self.stop()
+        msg = _OffboardMsg(self.channel, interaction.user)
+        await self.archive_handler.run(self.client, msg)
+
+    @discord.ui.button(label="Remove", style=discord.ButtonStyle.danger)
+    async def remove(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not _is_admin(interaction):
+            await interaction.response.send_message("🚫 Admin only.", ephemeral=True)
+            return
+        member = self.channel.guild.get_member(self.user.id)
+        if not member:
+            await interaction.response.edit_message(
+                content=f"{self.channel.mention} **({self.channel.guild.name})** — ❌ User not in server",
+                view=None,
+            )
+            self.stop()
+            return
+        try:
+            await self.channel.set_permissions(member, overwrite=None)
+            await self.channel.send(
+                f"(( {self.user.display_name} has been removed from this channel. ))"
+            )
+            await interaction.response.edit_message(
+                content=f"{self.channel.mention} **({self.channel.guild.name})** — ✅ Removed",
+                view=None,
+            )
+        except discord.Forbidden:
+            await interaction.response.edit_message(
+                content=f"{self.channel.mention} **({self.channel.guild.name})** — ❌ Missing permissions",
+                view=None,
+            )
+        except Exception as e:
+            logger.error(f"Offboard remove failed for {self.channel.name}: {e}")
+            await interaction.response.edit_message(
+                content=f"{self.channel.mention} **({self.channel.guild.name})** — ❌ Failed: {e}",
+                view=None,
+            )
+        self.stop()
 
 
 # ── Registration ──────────────────────────────────────────────────────────────
@@ -106,7 +349,14 @@ def register_slash_commands(
             return
         await interaction.response.defer()
         ctx = InteractionContext(interaction, content=f"/huh {question}")
-        await huh_instance.run(client, ctx)
+        result = await huh_instance.run(client, ctx)
+        if result is None:
+            await interaction.followup.send("No match found — check your DMs for suggestions.", ephemeral=True)
+        elif isinstance(result, list):
+            for chunk in result:
+                await interaction.followup.send(chunk)
+        else:
+            await interaction.followup.send(result)
 
     # ── /lore ─────────────────────────────────────────────────────────────────
 
@@ -127,8 +377,8 @@ def register_slash_commands(
         except Exception:
             return []
 
-    @lore_grp.command(name="search", description="Search lore entries by keyword (admin only)")
-    @app_commands.describe(query="Keyword or phrase to look up")
+    @lore_grp.command(name="search", description="Search lore entries by title (admin only)")
+    @app_commands.describe(query="Partial title to search for (e.g. 'cam' finds 'Camarilla')")
     async def lore_search(interaction: discord.Interaction, query: str):
         if not _is_admin(interaction):
             await _deny(interaction)
@@ -136,15 +386,34 @@ def register_slash_commands(
         if not lore_manager:
             await interaction.response.send_message("❌ Lore database unavailable.", ephemeral=True)
             return
-        await interaction.response.defer()
-        result = await lore_manager.get_relevant_lore(query)
-        if result:
-            for chunk in [result[i:i + 1990] for i in range(0, len(result), 1990)]:
-                await interaction.followup.send(chunk)
-        else:
-            await interaction.followup.send("No lore entries matched that query.")
+        await interaction.response.defer(ephemeral=True)
+        matches = await lore_manager.search_entries(query)
+        if not matches:
+            await interaction.followup.send(
+                f"No lore entries found matching **{query}**.\n"
+                f"Use `/lore list` to browse all entries."
+            )
+            return
+        embed = discord.Embed(
+            title=f"🔍 Lore Search: \"{query}\"",
+            description=f"{len(matches)} result{'s' if len(matches) != 1 else ''} found",
+            color=discord.Color.dark_purple(),
+        )
+        for entry in matches[:10]:
+            preview = entry['content']
+            if len(preview) > 200:
+                preview = preview[:200] + "..."
+            kw_str = ", ".join(entry['keywords']) if entry['keywords'] else "none"
+            embed.add_field(
+                name=entry['title'],
+                value=f"{preview}\n*Keywords: {kw_str}*",
+                inline=False,
+            )
+        if len(matches) > 10:
+            embed.set_footer(text=f"Showing first 10 of {len(matches)} matches — refine your search to narrow results.")
+        await interaction.followup.send(embed=embed)
 
-    @lore_grp.command(name="list", description="List all lore entries (admin only)")
+    @lore_grp.command(name="list", description="Browse all lore entries (admin only)")
     async def lore_list(interaction: discord.Interaction):
         if not _is_admin(interaction):
             await _deny(interaction)
@@ -157,14 +426,35 @@ def register_slash_commands(
         if not entries:
             await interaction.followup.send("No lore entries found.")
             return
-        lines = [
-            f"**{e['title']}** — keywords: {', '.join(e['keywords']) or '(none)'}"
-            for e in entries
-        ]
-        header = f"**Lore Database ({len(entries)} entries)**\n"
-        text = header + "\n".join(lines)
-        for chunk in [text[i:i + 1990] for i in range(0, len(text), 1990)]:
-            await interaction.followup.send(chunk)
+        view = LoreListView(entries)
+        await interaction.followup.send(embed=view.build_embed(), view=view)
+
+    @lore_grp.command(name="view", description="View a lore entry in full (admin only)")
+    @app_commands.describe(title="Title of the entry to view")
+    @app_commands.autocomplete(title=_title_autocomplete)
+    async def lore_view(interaction: discord.Interaction, title: str):
+        if not _is_admin(interaction):
+            await _deny(interaction)
+            return
+        if not lore_manager:
+            await interaction.response.send_message("❌ Lore database unavailable.", ephemeral=True)
+            return
+        await interaction.response.defer(ephemeral=True)
+        entry = await lore_manager.get_entry(title)
+        if not entry:
+            await interaction.followup.send(
+                f"❌ No entry found with title **{title}**.\n"
+                f"Use `/lore list` to browse all entries or `/lore search` to find by partial title."
+            )
+            return
+        embed = discord.Embed(
+            title=entry['title'],
+            description=entry['content'],
+            color=discord.Color.dark_purple(),
+        )
+        kw_str = ", ".join(entry['keywords']) if entry['keywords'] else "none"
+        embed.add_field(name="Keywords", value=kw_str, inline=False)
+        await interaction.followup.send(embed=embed)
 
     @lore_grp.command(name="add", description="Add a new lore entry (admin only)")
     @app_commands.describe(
@@ -329,6 +619,15 @@ def register_slash_commands(
         ctx = InteractionContext(interaction, content="/stale-channels " + " ".join(parts))
         await lotslarp_instance.stale_handler.run(client, ctx)
 
+    @ls_grp.command(name="waiting-for-st", description="List channels waiting for a Storyteller response (admin only)")
+    async def ls_waiting_for_st(interaction: discord.Interaction):
+        if not _is_admin(interaction):
+            await _deny(interaction)
+            return
+        await interaction.response.defer()
+        ctx = InteractionContext(interaction, content="/lotslarp waiting-for-st")
+        await lotslarp_instance.waiting_for_st_handler.run(client, ctx)
+
     @ls_grp.command(name="purge-archives", description="Manually run the archive deletion job (admin only)")
     async def ls_purge(interaction: discord.Interaction):
         if not _is_admin(interaction):
@@ -339,6 +638,66 @@ def register_slash_commands(
         await ctx.channel.send("⚙️ Manually triggering archive cleanup task...")
         await cleanup_old_archives(client, firestore_client)
         await ctx.channel.send("✅ Archive cleanup task finished.")
+
+    @ls_grp.command(name="offboard", description="Archive a player's private channels (admin only)")
+    @app_commands.describe(member="Player name to offboard (type to search across all servers)")
+    @app_commands.autocomplete(member=_member_autocomplete)
+    async def ls_offboard(interaction: discord.Interaction, member: str):
+        if not _is_admin(interaction):
+            await _deny(interaction)
+            return
+        await interaction.response.defer()
+
+        # Resolve user ID → Member object from any guild
+        try:
+            user_id = int(member)
+        except ValueError:
+            await interaction.followup.send("❌ Invalid selection — please choose from the autocomplete list.", ephemeral=True)
+            return
+
+        resolved: discord.Member | None = None
+        for guild in client.guilds:
+            m = guild.get_member(user_id)
+            if m:
+                resolved = m
+                break
+        if not resolved:
+            await interaction.followup.send("❌ Member not found in any server.", ephemeral=True)
+            return
+
+        found = await _find_user_channels(client, user_id)
+        all_ids = [ch.id for chs in found.values() for ch in chs]
+        archived_ids = await _get_archived_channel_ids(firestore_client, all_ids)
+
+        # Header summary
+        header = _build_offboard_header(resolved, found, archived_ids)
+        await interaction.followup.send(embed=header)
+
+        if not found:
+            return
+
+        # One message per active channel (with buttons); collect archived ones for a single trailing message
+        already_archived_lines = []
+        for guild, channels in found.items():
+            for ch in channels:
+                if ch.id in archived_ids:
+                    already_archived_lines.append(f"• {ch.mention} **({guild.name})**")
+                else:
+                    view = ChannelOffboardView(
+                        channel=ch,
+                        user=resolved,
+                        archive_handler=lotslarp_instance.archive_handler,
+                        client=client,
+                    )
+                    await interaction.followup.send(
+                        content=f"{ch.mention} **({guild.name})**",
+                        view=view,
+                    )
+
+        if already_archived_lines:
+            await interaction.followup.send(
+                content="✅ **Already archived:**\n" + "\n".join(already_archived_lines)
+            )
 
     # ── /lotslarp report ──────────────────────────────────────────────────────
 

@@ -14,6 +14,7 @@ from modules.channel_summarize import ChannelSummarize
 from modules.channel_group import ChannelGroup
 from modules.archive_channel import ArchiveChannel, UnarchiveChannel
 from modules.archive_cleanup import cleanup_old_archives
+from modules.waiting_for_st import WaitingForST
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +57,9 @@ class Lotslarp:
         # Archive Handler
         self.archive_handler = ArchiveChannel(firestore_client)
         self.unarchive_handler = UnarchiveChannel(firestore_client)
+
+        # Waiting for ST Handler
+        self.waiting_for_st_handler = WaitingForST()
 
     async def run(self, client: discord.Client, message: discord.Message):
         """
@@ -169,6 +173,9 @@ class Lotslarp:
 
             else:
                 await message.channel.send(f"❌ Unknown report type: `{report_type}`. Available: `voice`, `digest`, `month`.")
+
+        elif subcommand == "waiting-for-st":
+            await self.waiting_for_st_handler.run(client, message)
 
         elif subcommand == "purge-archives":
             await message.channel.send("⚙️ Manually triggering archive cleanup task...")

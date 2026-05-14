@@ -110,6 +110,25 @@ class LoreManager:
             logger.error(f"Error finding lore entry '{title}': {e}")
         return None, None
 
+    async def get_entry(self, title: str) -> dict | None:
+        """Returns the full entry dict for a given title, or None if not found."""
+        _, data = await self._find_doc_by_title(title)
+        if data is None:
+            return None
+        return {
+            'title': data.get('title', ''),
+            'content': data.get('content', ''),
+            'keywords': data.get('keywords', []),
+        }
+
+    async def search_entries(self, query: str) -> list:
+        """Returns all entries whose title contains the query string (case-insensitive)."""
+        query_lower = query.lower().strip()
+        if not query_lower:
+            return []
+        all_entries = await self.list_entries()
+        return [e for e in all_entries if query_lower in e['title'].lower()]
+
     # ── Write helpers ─────────────────────────────────────────────────────────
 
     async def add_entry(self, title: str, content: str, keywords: list) -> bool:

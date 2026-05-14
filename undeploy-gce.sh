@@ -1,47 +1,28 @@
 #!/bin/bash
-
-# This script destroys the GCE infrastructure provisioned by OpenTofu.
-
+# Permanently destroys the old dedicated lotslarp-bot GCE VM and its resources.
+# Run this once you are confident the bot is stable on the shared host.
 set -e
 
-# Configuration
 SSH_KEY_PATH="${HOME}/.ssh/ansible_gce_key"
+GCP_PROJECT_ID=${GCP_PROJECT_ID:-"lotslarp"}
 
-echo "⚠️  WARNING: This will DESTROY the Google Compute Engine VM and all associated resources."
-echo "   It will NOT delete the Artifact Registry images or the Firestore database."
+echo "⚠️  WARNING: This will permanently destroy the old dedicated bot VM and all its GCE resources."
+echo "   Artifact Registry images and Firestore data will NOT be affected."
 echo ""
-read -p "Are you sure you want to proceed? (y/N) " -n 1 -r
-echo
-if [[ ! $REPLY =~ ^[Yy]$ ]]
-then
+echo "   Only run this after confirming the bot is healthy on the new shared host (34.148.234.178)."
+echo ""
+read -p "Type 'destroy' to confirm: " confirm
+if [[ "$confirm" != "destroy" ]]; then
     echo "Aborted."
     exit 1
 fi
 
-echo "--- Destroying Infrastructure (OpenTofu) ---"
+echo "--- Destroying old infrastructure (OpenTofu) ---"
 cd terraform
-
-if [ ! -d ".terraform" ] && [ ! -d ".tofu" ]; then
-    echo "Error: OpenTofu state not found. Nothing to destroy or wrong directory?"
-    exit 1
-fi
-
-# We need the variables to destroy properly
-# (Though technically only the state file matters, passing variables suppresses warnings)
-GCP_PROJECT_ID=${GCP_PROJECT_ID:-"lotslarp"}
-SSH_USER="ansible"
 
 tofu destroy -auto-approve \
     -var="project_id=$GCP_PROJECT_ID" \
-    -var="ssh_user=$SSH_USER" \
+    -var="ssh_user=ansible" \
     -var="ssh_pub_key_path=${SSH_KEY_PATH}.pub"
 
-echo "✅ Infrastructure destroyed."
-
-# Optional: Cleanup SSH key
-if [ -f "$SSH_KEY_PATH" ]; then
-    echo "Removing Ansible SSH key..."
-    rm "$SSH_KEY_PATH" "$SSH_KEY_PATH.pub"
-fi
-
-echo "Cleanup complete."
+echo "✅ Old dedicated VM destroyed."

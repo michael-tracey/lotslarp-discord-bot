@@ -133,7 +133,7 @@ done
 
 # 3. Build Image
 echo "--- Submitting Build ---"
-gcloud beta builds submit --region=$GCP_REGION --config=cloudbuild.yaml \
+gcloud beta builds submit --project=$GCP_PROJECT_ID --region=$GCP_REGION --config=cloudbuild.yaml \
     --substitutions=_SERVICE_NAME=$SERVICE_NAME,_REGION=$GCP_REGION,_ARTIFACT_REGISTRY_REPO=$ARTIFACT_REGISTRY_REPO \
     .
 
@@ -145,6 +145,7 @@ echo "--- Deploying to Cloud Run ---"
 echo "Clearing old secret references..."
 gcloud run services update "$SERVICE_NAME" \
     --region "$GCP_REGION" \
+    --project "$GCP_PROJECT_ID" \
     --clear-secrets \
     --quiet || echo "Warning: Failed to clear secrets (service might not exist yet), continuing..."
 
@@ -154,6 +155,7 @@ IMAGE_URL="$GCP_REGION-docker.pkg.dev/$GCP_PROJECT_ID/$ARTIFACT_REGISTRY_REPO/$S
 CMD="gcloud run deploy $SERVICE_NAME \
   --image $IMAGE_URL \
   --region $GCP_REGION \
+  --project $GCP_PROJECT_ID \
   --platform managed \
   --port 8080 \
   --cpu 1 \
@@ -185,6 +187,7 @@ echo "--- Cleaning up old images ---"
 echo "Fetching image list..."
 IMAGES_TO_DELETE=$(gcloud artifacts docker images list \
     "$GCP_REGION-docker.pkg.dev/$GCP_PROJECT_ID/$ARTIFACT_REGISTRY_REPO/$SERVICE_NAME" \
+    --project=$GCP_PROJECT_ID \
     --include-tags \
     --sort-by=\"~UPDATE_TIME\" \
     --format="value(DIGEST)" \
@@ -196,6 +199,7 @@ if [ -n "$IMAGES_TO_DELETE" ]; then
         echo "Deleting image: $digest"
         gcloud artifacts docker images delete \
             "$GCP_REGION-docker.pkg.dev/$GCP_PROJECT_ID/$ARTIFACT_REGISTRY_REPO/$SERVICE_NAME@$digest" \
+            --project=$GCP_PROJECT_ID \
             --delete-tags --quiet || echo "Failed to delete $digest"
     done
 else

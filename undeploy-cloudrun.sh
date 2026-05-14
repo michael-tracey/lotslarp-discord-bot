@@ -65,6 +65,7 @@ echo "Deleting ALL images for this service from Artifact Registry..."
 
 gcloud artifacts docker images delete \
     "$GCP_REGION-docker.pkg.dev/$GCP_PROJECT_ID/$ARTIFACT_REGISTRY_REPO/$SERVICE_NAME" \
+    --project="$GCP_PROJECT_ID" \
     --delete-tags --quiet || echo "No images found or failed to delete."
 
 echo "✅ Cloud Run system undeployed."

@@ -885,6 +885,12 @@ async def run_stale_channels_job(client: discord.Client, summary_reminder_instan
         logger.error(f"Cannot run stale channels job: Output channel {summary_reminder_instance.output_channel_id} not found.")
 
 
+async def run_waiting_for_st_job(client: discord.Client, waiting_for_st_instance):
+    """Job to post the daily waiting-for-ST channel report."""
+    logger.info("Running scheduled waiting-for-ST report...")
+    await waiting_for_st_instance.run_report(client)
+
+
 def _make_safe_job(func, name, client):
     """Wraps a scheduled job so any uncaught exception posts an alert to the report channel."""
     async def _wrapped(*args, **kwargs):
@@ -976,9 +982,10 @@ def setup_bot():
         logger.warning("LOTSLARP_DISCORD_BOT_GEMINI_API_KEY not found. Summary generation will be disabled.")
 
     # Initialize Firestore client
+    gcp_project_id = os.environ.get("GCP_PROJECT_ID", "lotslarp")
     try:
-        firestore_client = firestore.Client()
-        logger.info("Successfully initialized Firestore client.")
+        firestore_client = firestore.Client(project=gcp_project_id)
+        logger.info(f"Successfully initialized Firestore client (project={gcp_project_id}).")
     except Exception as e:
         logger.critical(f"Failed to initialize Firestore client: {e}", exc_info=True)
         firestore_client = None
@@ -1121,6 +1128,15 @@ def setup_bot():
                 logger.error(f"Invalid stale channels cron string '{stale_cron}'. Job not scheduled. Error: {e}")
         else:
             logger.info("No cron schedule set for stale channels (LOTSLARP_BOT_STALE_CHANNELS_CRON). Skipping.")
+
+    # Schedule daily waiting-for-ST report (08:00 UTC)
+    if lotslarp_instance:
+        scheduler.add_job(
+            safe_job(run_waiting_for_st_job, "waiting_for_st"),
+            'cron', hour=8, minute=0,
+            args=[client, lotslarp_instance.waiting_for_st_handler],
+        )
+        logger.info("Scheduled waiting-for-ST report for daily at 08:00 UTC.")
 
     # Schedule health monitoring and keepalive jobs
     scheduler.add_job(periodic_health_check, 'interval', minutes=30)  # Health check every 30 minutes

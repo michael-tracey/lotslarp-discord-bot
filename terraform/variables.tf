@@ -13,13 +13,13 @@ variable "region" {
 variable "zone" {
   description = "GCP Zone"
   type        = string
-  default     = "us-east1-b"
+  default     = "us-east1-c"
 }
 
 variable "machine_type" {
   description = "GCE Machine Type"
   type        = string
-  default     = "e2-micro"
+  default     = "e2-small"
 }
 
 variable "ssh_user" {

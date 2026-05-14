@@ -5,6 +5,7 @@
 
 set -e
 
+GCP_PROJECT_ID=${GCP_PROJECT_ID:-"lotslarp"}
 INSTANCE_NAME="lotslarp-discord-bot-vm"
 ZONE="us-east1-b"
 VENV_DIR=".venv"
@@ -13,7 +14,7 @@ BOT_SCRIPT="discord_bot.py"
 # ── Resume mode ───────────────────────────────────────────────────────────────
 if [[ "${1}" == "--resume" ]]; then
     echo "Starting cloud instance $INSTANCE_NAME..."
-    gcloud compute instances start "$INSTANCE_NAME" --zone "$ZONE"
+    gcloud compute instances start "$INSTANCE_NAME" --zone "$ZONE" --project "$GCP_PROJECT_ID"
     echo "✅ Cloud instance is starting. Check status with: ./status-gce.sh"
     exit 0
 fi
@@ -37,11 +38,11 @@ fi
 # ── Stop cloud instance ───────────────────────────────────────────────────────
 if [[ -z "$SKIP_GCLOUD" ]]; then
     CLOUD_STATUS=$(gcloud compute instances describe "$INSTANCE_NAME" \
-        --zone "$ZONE" --format="get(status)" 2>/dev/null || echo "UNKNOWN")
+        --zone "$ZONE" --project "$GCP_PROJECT_ID" --format="get(status)" 2>/dev/null || echo "UNKNOWN")
 
     if [[ "$CLOUD_STATUS" == "RUNNING" ]]; then
         echo "Stopping cloud instance $INSTANCE_NAME (status: $CLOUD_STATUS)..."
-        gcloud compute instances stop "$INSTANCE_NAME" --zone "$ZONE"
+        gcloud compute instances stop "$INSTANCE_NAME" --zone "$ZONE" --project "$GCP_PROJECT_ID"
         echo "✅ Cloud instance stopped."
     elif [[ "$CLOUD_STATUS" == "TERMINATED" || "$CLOUD_STATUS" == "STOPPED" ]]; then
         echo "Cloud instance is already stopped (status: $CLOUD_STATUS). Continuing."
@@ -69,7 +70,7 @@ _on_exit() {
         read -r -p "Restart cloud instance $INSTANCE_NAME? (y/n): " resume
         if [[ "$resume" =~ ^[Yy] ]]; then
             echo "Starting cloud instance..."
-            gcloud compute instances start "$INSTANCE_NAME" --zone "$ZONE"
+            gcloud compute instances start "$INSTANCE_NAME" --zone "$ZONE" --project "$GCP_PROJECT_ID"
             echo "✅ Cloud instance is starting. Check status with: ./status-gce.sh"
         else
             echo "Cloud instance left stopped. Run './dev-local.sh --resume' to start it later."

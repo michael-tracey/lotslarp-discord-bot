@@ -564,6 +564,8 @@ class ArchiveChannel:
                 if sent_msg:
                     try:
                         doc_ref = self.db.collection('archived_channels').document(str(target_channel.id))
+                        # hold_for_approval prevents auto-deletion by cleanup job
+                        status = 'hold' if getattr(message, 'hold_for_approval', False) else 'pending'
                         doc_ref.set({
                             'guild_id': target_channel.guild.id,
                             'channel_name': target_channel.name,
@@ -571,7 +573,7 @@ class ArchiveChannel:
                             'deletion_date': deletion_date,
                             'last_message_url': sent_msg.jump_url,
                             'gcs_url': gcs_url,
-                            'status': 'pending'
+                            'status': status,
                         })
                         logger.info(f"Saved archive record for channel {target_channel.id} to Firestore.")
                     except Exception as e:

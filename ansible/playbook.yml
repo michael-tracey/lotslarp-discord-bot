@@ -1,72 +1,15 @@
 ---
-- name: Configure Discord Bot VM
+- name: Deploy Discord Bot
   hosts: all
   become: yes
   vars:
-    # Passed via --extra-vars
+    # Passed via --extra-vars from deploy-gce.sh
     # docker_image: "..."
     # env_file_src: "..."
-    app_dir: "/opt/lotslarp-bot"
+    # map_url: "..."
+    app_dir: "/opt/docker-apps/lotslarp-bot"
 
   tasks:
-    - name: Wait for apt lock
-      shell: "while fuser /var/lib/dpkg/lock-frontend /var/lib/apt/lists/lock /var/lib/dpkg/lock >/dev/null 2>&1; do sleep 5; done"
-      timeout: 300
-
-    - name: Update apt cache
-      apt:
-        update_cache: yes
-        cache_valid_time: 3600
-      register: apt_update_result
-      until: apt_update_result is success
-      retries: 5
-      delay: 10
-
-    - name: Check for upgradable packages
-      shell: apt list --upgradable 2>/dev/null | grep -v "Listing..." | wc -l
-      register: upgrade_count
-      changed_when: false
-
-    - name: Display number of packages to upgrade
-      debug:
-        msg: "Upgrading {{ upgrade_count.stdout | trim }} packages. This may take several minutes..."
-
-    - name: Upgrade all packages (dist-upgrade)
-      apt:
-        upgrade: dist
-        force_apt_get: yes
-      register: upgrade_result
-
-    - name: Show upgrade details if failed
-      debug:
-        var: upgrade_result
-      when: upgrade_result is failed
-
-    - name: Install base dependencies
-      apt:
-        name:
-          - apt-transport-https
-          - ca-certificates
-          - curl
-          - gnupg
-          - python3-pip
-          - python3-docker
-        state: present
-
-    # Docker installation simplified to use Ubuntu's native package
-    # This avoids 404 errors with external Docker repositories
-    - name: Install Docker (Ubuntu native)
-      apt:
-        name: docker.io
-        state: present
-        update_cache: yes
-
-    - name: Ensure Docker service is running
-      service:
-        name: docker
-        state: started
-        enabled: yes
-
     - name: Create app directory
       file:
         path: "{{ app_dir }}"
@@ -92,14 +35,12 @@
         line: "LOTSLARP_MAP_URL={{ map_url }}"
         state: present
 
-    - name: Get Access Token from GCE Metadata
-      # We use the VM's service account to authenticate with Artifact Registry
-      # Fixing the quoting issue: using single quotes for the YAML string, and double quotes for shell string
-      shell: 'curl -H "Metadata-Flavor: Google" "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token" | grep -o "\"access_token\":\"[^\"]*\"" | cut -d: -f2 | tr -d "\""'
+    - name: Get GCE service account token
+      shell: 'curl -s -H "Metadata-Flavor: Google" "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token" | python3 -c "import sys,json; print(json.load(sys.stdin)[\"access_token\"])"'
       register: gce_token
       changed_when: false
 
-    - name: Log in to Google Artifact Registry
+    - name: Log in to Artifact Registry
       community.docker.docker_login:
         registry: us-east1-docker.pkg.dev
         username: oauth2accesstoken
@@ -111,29 +52,26 @@
         source: pull
         force_source: yes
 
-    - name: Stop old container (if running)
+    - name: Stop old container
       community.docker.docker_container:
         name: discord-bot
         state: absent
 
-    - name: Run Discord Bot Container
+    - name: Run Discord bot container
       community.docker.docker_container:
         name: discord-bot
         image: "{{ docker_image }}"
         state: started
         restart_policy: always
-        pull: yes
-        # We mount .env instead of using env_file so python-dotenv can parse multi-line strings correctly
         volumes:
           - "{{ app_dir }}/.env:/app/.env"
         ports:
           - "8080:8080"
-        # Limits (optional, mirroring e2-micro constraints roughly)
         memory: 800m
-        log_driver: "gcplogs"
+        log_driver: gcplogs
         log_options:
           gcp-log-cmd: "true"
 
-    - name: Prune unused Docker images and containers
-      shell: "docker system prune -af"
-      when: docker_image is defined
+    - name: Prune unused Docker images
+      shell: docker system prune -af
+      changed_when: false
